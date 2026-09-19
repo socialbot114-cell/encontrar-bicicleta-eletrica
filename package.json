@@ -8,6 +8,7 @@
     "brand-assets": "node scripts/generate-brand-assets.mjs",
     "build": "npm run brand-assets && tsc -b && vite build",
     "lint": "eslint .",
+    "test": "vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -52,6 +53,7 @@
     "tailwindcss": "^3.4.17",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^5.4.21"
+    "vite": "^5.4.21",
+    "vitest": "^4.1.11"
   }
 }

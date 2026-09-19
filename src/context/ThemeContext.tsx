@@ -18,7 +18,8 @@ function isNative(): boolean {
 async function setStatusBarStyle(theme: Theme) {
     if (!isNative()) return;
     await StatusBar.setStyle({
-        style: theme === 'dark' ? Style.Dark : Style.Light,
+        // Capacitor names describe icon color, not the background theme.
+        style: theme === 'dark' ? Style.Light : Style.Dark,
     });
 }
 
@@ -34,7 +35,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         root.classList.remove('light', 'dark');
         root.classList.add(theme);
         localStorage.setItem('theme', theme);
-        setStatusBarStyle(theme);
+        setStatusBarStyle(theme).catch((error: unknown) => {
+            console.warn('Unable to update native status bar style', error);
+        });
     }, [theme]);
 
     const toggleTheme = () => {

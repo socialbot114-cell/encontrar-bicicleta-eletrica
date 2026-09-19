@@ -39,7 +39,7 @@ export const LandingPage = () => {
             <HeroSection />
 
             <div className="container mx-auto px-6 max-w-7xl">
-                <FeaturesGrid onOpenModal={(id) => setActiveModal(id as any)} />
+                <FeaturesGrid onOpenModal={(id) => setActiveModal(id)} />
                 <ContactSection />
             </div>
 

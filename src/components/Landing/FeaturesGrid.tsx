@@ -1,15 +1,18 @@
 import { motion } from 'framer-motion';
 import { Leaf, Bike, Heart, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import type { ReactNode } from 'react';
 
 interface FeaturesGridProps {
-    onOpenModal: (id: string) => void;
+    onOpenModal: (id: 'esg' | 'green' | 'health' | 'community') => void;
 }
+
+type FeatureId = 'esg' | 'green' | 'health' | 'community';
 
 export const FeaturesGrid = ({ onOpenModal }: FeaturesGridProps) => {
     const { t } = useTranslation();
 
-    const features = [
+    const features: Array<{ id: FeatureId; icon: ReactNode; title: string; desc: string; gradient: string; border: string }> = [
         {
             id: 'esg',
             icon: <Leaf className="w-8 h-8 text-green-600 dark:text-green-400" />,

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -11,6 +11,7 @@ import { Cloud, Zap, AlertTriangle, Droplet, Star, LocateFixed, Navigation, Layo
 import { motion, AnimatePresence } from 'framer-motion';
 import { SmartDashboard } from '../Dashboard/SmartDashboard';
 import { trackEvent } from '../../lib/analytics';
+import { buildCyclingDirectionsUrl, formatFreshness } from '../../lib/navigation';
 
 // Fix Leaflet default icon logic for Vite/Webpack
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -64,10 +65,11 @@ const MapEventListener = () => {
 
 const MapComponent = () => {
     const {
-        networks, networksError, refreshNetworks, selectedNetwork, selectNetwork, userLocation, clearSelection,
+        networks, networksError, networksUpdatedAt, refreshNetworks, selectedNetwork, selectedNetworkError,
+        selectedNetworkUpdatedAt, refreshSelectedNetwork, selectNetwork, userLocation, clearSelection,
         weather, airQuality, smartLayers, toggleSmartLayer, favorites,
-        toggleFavoriteNetwork, toggleFavoriteStation, currentRoute, fetchRoute,
-        requestLocation
+        toggleFavoriteNetwork, toggleFavoriteStation, requestLocation, smartDataEnabled,
+        toggleSmartData, smartDataError, smartDataUpdatedAt,
     } = useCityBikes();
     const { t } = useTranslation();
     const [mapRef, setMapRef] = useState<L.Map | null>(null);
@@ -137,6 +139,7 @@ const MapComponent = () => {
                                         <div className="min-w-0">
                                             <h2 className="text-base md:text-xl font-black text-slate-800 dark:text-white leading-tight break-words">{selectedNetwork.name}</h2>
                                              <p className="text-xs text-slate-500 dark:text-emerald-400 font-bold uppercase tracking-widest">{selectedNetwork.location.city}</p>
+                                             <p className="mt-1 text-[10px] font-semibold text-slate-400">{formatFreshness(selectedNetworkUpdatedAt)}</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0">
@@ -222,12 +225,28 @@ const MapComponent = () => {
 
                                         <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase tracking-tight">
                                             <span>Wind: {weather.windSpeed} km/h</span>
-                                            <span>AQI Index: {airQuality.aqi}</span>
+                                            <span>PM2.5: {airQuality.pm2_5.toFixed(1)} µg/m³</span>
                                         </div>
                                     </div>
                                 </div>
                             </motion.div>
                         )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {selectedNetworkError && (
+                    <motion.div
+                        role="alert"
+                        initial={{ opacity: 0, y: -12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        className="fixed top-[calc(5rem+env(safe-area-inset-top))] left-3 right-3 md:absolute md:left-6 md:right-auto md:max-w-sm z-[1002] glass-premium px-4 py-3 rounded-2xl border border-red-500/30 shadow-2xl flex items-center gap-3"
+                    >
+                        <AlertTriangle className="h-5 w-5 shrink-0 text-red-400" />
+                        <span className="min-w-0 flex-1 text-sm text-red-700 dark:text-red-200">Could not refresh stations for this network. Existing data may be stale.</span>
+                        <button onClick={refreshSelectedNetwork} className="shrink-0 rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white">Retry</button>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -243,7 +262,8 @@ const MapComponent = () => {
                     >
                         <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
                         <div className="min-w-0 text-sm text-red-700 dark:text-red-200 break-words">
-                            Failed to load networks — map data may be incomplete.
+                            Could not load the bike-network list. Check your connection and retry.
+                            {networksUpdatedAt > 0 && <span className="ml-1 text-xs text-slate-500">{formatFreshness(networksUpdatedAt)}</span>}
                         </div>
                         <button
                             onClick={() => refreshNetworks()}
@@ -262,6 +282,17 @@ const MapComponent = () => {
                     aria-label="Map layers"
                     className="glass-premium p-1.5 md:p-2 rounded-2xl border border-white/10 shadow-2xl flex flex-col gap-1"
                 >
+                    <button
+                        type="button"
+                        aria-pressed={smartDataEnabled}
+                        aria-label={`${smartDataEnabled ? 'Disable' : 'Enable'} Smart Data coordinate sharing`}
+                        title="Smart Data uses the approximate map center for weather and nearby amenities"
+                        onClick={toggleSmartData}
+                        className={`flex min-h-11 items-center gap-2 rounded-xl px-3 text-[10px] font-black uppercase tracking-wide transition ${smartDataEnabled ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5'}`}
+                    >
+                        <Cloud className="h-4 w-4 shrink-0" />
+                        <span>Data {smartDataEnabled ? 'on' : 'off'}</span>
+                    </button>
                     <LayerToggle
                         active={smartLayers.evStations}
                         icon={<Zap className="w-4 h-4" />}
@@ -281,6 +312,14 @@ const MapComponent = () => {
                         onClick={() => toggleSmartLayer('pois')}
                     />
                 </div>
+
+                {smartDataEnabled && (
+                    <div className="glass-premium max-w-40 rounded-xl px-3 py-2 text-[9px] font-semibold leading-tight text-slate-600 shadow-xl dark:text-slate-300" role="status">
+                        Approximate map center is shared with data providers.
+                        {smartDataError && <span className="mt-1 block text-red-500">Smart Data failed to update.</span>}
+                        {!smartDataError && smartDataUpdatedAt > 0 && <span className="mt-1 block text-emerald-600">{formatFreshness(smartDataUpdatedAt)}</span>}
+                    </div>
+                )}
 
                 <div className="glass-premium p-1 rounded-xl border border-white/10 shadow-2xl flex flex-col pointer-events-auto overflow-hidden">
                     <button
@@ -311,30 +350,6 @@ const MapComponent = () => {
                 <MapEventListener />
                 <SmartLayers />
 
-                {/* Routing Visualization */}
-                {currentRoute && (
-                    <Polyline
-                        positions={currentRoute}
-                        pathOptions={{
-                            color: '#06b6d4',
-                            weight: 6,
-                            opacity: 0.8,
-                            lineJoin: 'round',
-                            dashArray: '1, 10'
-                        }}
-                    />
-                )}
-                {currentRoute && (
-                    <Polyline
-                        positions={currentRoute}
-                        pathOptions={{
-                            color: '#22d3ee',
-                            weight: 2,
-                            opacity: 1,
-                        }}
-                    />
-                )}
-
                 {/* User Location Marker */}
                 {userLocation && (
                     <Marker
@@ -343,6 +358,8 @@ const MapComponent = () => {
                             className: 'user-location-marker',
                             html: '<div class="w-4 h-4 bg-blue-500 border-2 border-white rounded-full shadow-lg pulse"></div>'
                         })}
+                        alt="Your current location"
+                        title="Your current location"
                     />
                 )}
 
@@ -366,7 +383,7 @@ const MapComponent = () => {
                             }
 
                             return L.divIcon({
-                                html: `<div class="${size} ${color} rounded-full flex items-center justify-center text-white font-black border-4 border-white/20 shadow-xl backdrop-blur-sm transition-transform hover:scale-110">
+                                html: `<div role="img" aria-label="Cluster of ${count} bike networks" class="${size} ${color} rounded-full flex items-center justify-center text-white font-black border-4 border-white/20 shadow-xl backdrop-blur-sm transition-transform hover:scale-110">
                                         ${count}
                                        </div>`,
                                 className: 'custom-cluster-marker',
@@ -379,6 +396,8 @@ const MapComponent = () => {
                                 key={network.id}
                                 position={[network.location.latitude, network.location.longitude]}
                                 icon={bikeIcon}
+                                alt={`${network.name} bike network`}
+                                title={`${network.name}, ${network.location.city}`}
                                 eventHandlers={{
                                     click: () => selectNetwork(network.id),
                                 }}
@@ -408,6 +427,8 @@ const MapComponent = () => {
                                 key={station.id}
                                 position={[station.latitude, station.longitude]}
                                 icon={bikeIcon}
+                                alt={`${station.name} bike station, ${station.free_bikes} bikes available`}
+                                title={`${station.name}: ${station.free_bikes} bikes available`}
                             >
                                 <Popup className="premium-popup">
                                     <div className="p-2 min-w-[180px]">
@@ -442,14 +463,25 @@ const MapComponent = () => {
                                             </div>
                                         </div>
 
+                                        <p className="mb-3 text-[10px] font-semibold text-slate-400">
+                                            Station {formatFreshness(new Date(station.timestamp).getTime())}
+                                        </p>
+
                                         {userLocation && (
-                                            <button
-                                                onClick={() => fetchRoute(station.latitude, station.longitude)}
-                                                 className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20"
+                                            <>
+                                            <a
+                                                href={buildCyclingDirectionsUrl(userLocation, station.latitude, station.longitude)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={() => trackEvent('CYCLING_NAVIGATION_OPENED')}
+                                                aria-label={`Open cycling directions to ${station.name} in Google Maps`}
+                                                className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20"
                                             >
                                                 <Navigation className="w-3.5 h-3.5" />
-                                                Get Directions
-                                            </button>
+                                                Open cycling directions
+                                            </a>
+                                            <p className="mt-2 text-[9px] leading-snug text-slate-500">Opens Google Maps in cycling mode. Check route conditions and local safety guidance.</p>
+                                            </>
                                         )}
                                     </div>
                                 </Popup>
@@ -479,7 +511,7 @@ const LayerToggle = ({ active, icon, label, onClick }: { active: boolean, icon: 
             }`}
     >
         <span className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover/btn:scale-110'}`}>{icon}</span>
-        <span className="hidden md:inline text-xs font-bold uppercase tracking-widest">{label}</span>
+        <span className="hidden lg:inline text-xs font-bold uppercase tracking-widest">{label}</span>
     </button>
 );
 
