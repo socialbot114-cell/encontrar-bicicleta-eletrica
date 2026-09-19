@@ -30,8 +30,8 @@ jobs:
               with path.open('rb') as file:
                   plistlib.load(file)
           assert 'Encontrar Bicicleta Eletrica' in Path('ios/App/App/Info.plist').read_text()
-           project = Path('ios/App/App.xcodeproj/project.pbxproj').read_text()
-           assert 'PRODUCT_BUNDLE_IDENTIFIER = br.com.citybikes' in project
+          project = Path('ios/App/App.xcodeproj/project.pbxproj').read_text()
+          assert 'PRODUCT_BUNDLE_IDENTIFIER = br.com.citybikes' in project
           print('CityBikes metadata validation passed')
           PY
 
