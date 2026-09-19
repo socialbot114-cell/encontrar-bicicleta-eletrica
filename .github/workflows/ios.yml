@@ -1,0 +1,58 @@
+name: CityBikes CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  web-and-metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx tsc -b
+      - name: Validate iOS metadata
+        run: |
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+          for path in [Path('ios/App/App/Info.plist'), Path('ios/App/App/PrivacyInfo.xcprivacy')]:
+              with path.open('rb') as file:
+                  plistlib.load(file)
+          assert 'Encontrar Bicicleta Eletrica' in Path('ios/App/App/Info.plist').read_text()
+          assert 'br.com.citybikes' in Path('ios/App/App/Info.plist').read_text()
+          print('CityBikes metadata validation passed')
+          PY
+
+  ios:
+    runs-on: macos-14
+    needs: web-and-metadata
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm install -g @ionic/cli
+      - run: npm install
+      - run: npx cap sync ios
+      - run: pod install --project-directory=ios/App
+      - name: Build iOS simulator target
+        run: |
+          xcodebuild build \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO
