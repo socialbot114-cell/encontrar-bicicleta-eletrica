@@ -39,8 +39,6 @@ android/capacitor-cordova-android-plugins/build/
 # macOS
 *.orig
 
-# Scripts (not for production)
-scripts/
 assets.config
 DerivedData/
 *.xcuserstate
