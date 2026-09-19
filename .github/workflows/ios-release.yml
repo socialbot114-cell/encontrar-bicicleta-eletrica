@@ -89,7 +89,7 @@ jobs:
            app="$RUNNER_TEMP/CityBikes.xcarchive/Products/Applications/App.app"
            test -f "$app/PrivacyInfo.xcprivacy"
            /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist" | grep -qx 'br.com.citybikes'
-           /usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$app/Info.plist" | grep -qx 'Encontrar Bicicleta Eletrica'
+           /usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$app/Info.plist" | grep -qx 'Encontrar Bicicleta Elétrica'
            /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Info.plist" | grep -qx '2'
            /usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$app/Info.plist" | grep -qx 'false'
            codesign --verify --deep --strict "$app"
@@ -102,7 +102,7 @@ jobs:
            test -f "${app[0]}/PrivacyInfo.xcprivacy"
            /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${app[0]}/Info.plist" | grep -qx 'br.com.citybikes'
            /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "${app[0]}/Info.plist" | grep -qx '2'
-           /usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "${app[0]}/Info.plist" | grep -qx 'Encontrar Bicicleta Eletrica'
+           /usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "${app[0]}/Info.plist" | grep -qx 'Encontrar Bicicleta Elétrica'
            codesign --verify --deep --strict "${app[0]}"
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4

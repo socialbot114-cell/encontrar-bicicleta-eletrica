@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.citybikes',
-  appName: 'Encontrar Bicicleta Eletrica',
+  appName: 'Encontrar Bicicleta Elétrica',
   webDir: 'dist',
   server: {
     androidScheme: 'https',

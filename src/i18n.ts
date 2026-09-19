@@ -12,7 +12,7 @@ const getSavedLanguage = () => {
 const resources = {
     en: {
         translation: {
-            "app_title": "Encontrar Bicicleta Eletrica",
+            "app_title": "Encontrar Bicicleta Elétrica",
             "subtitle": "Select a network to begin.",
             "search_placeholder": "Search city or network...",
             "bikes": "Bikes",
@@ -75,7 +75,7 @@ const resources = {
     },
     pt: {
         translation: {
-            "app_title": "Encontrar Bicicleta Eletrica",
+            "app_title": "Encontrar Bicicleta Elétrica",
             "subtitle": "Selecione uma rede para começar.",
             "search_placeholder": "Buscar cidade ou rede...",
             "bikes": "Bicicletas",
@@ -138,7 +138,7 @@ const resources = {
     },
     es: {
         translation: {
-            "app_title": "Encontrar Bicicleta Eletrica",
+            "app_title": "Encontrar Bicicleta Elétrica",
             "subtitle": "Seleccione una red para comenzar.",
             "search_placeholder": "Buscar ciudad o red...",
             "bikes": "Bicicletas",
@@ -201,7 +201,7 @@ const resources = {
     },
     fr: {
         translation: {
-            "app_title": "Encontrar Bicicleta Eletrica",
+            "app_title": "Encontrar Bicicleta Elétrica",
             "subtitle": "Sélectionnez un réseau pour commencer.",
             "search_placeholder": "Rechercher une ville ou un réseau...",
             "bikes": "Vélos",
