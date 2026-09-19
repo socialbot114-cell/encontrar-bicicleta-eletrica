@@ -35,7 +35,7 @@ jobs:
           PY
 
   ios:
-    runs-on: macos-14
+    runs-on: macos-26
     needs: web-and-metadata
     steps:
       - uses: actions/checkout@v4
