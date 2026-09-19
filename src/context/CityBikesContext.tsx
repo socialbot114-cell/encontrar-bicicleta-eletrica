@@ -177,7 +177,7 @@ export const CityBikesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     const requestLocation = async () => {
-        if (locationStatus === 'requesting' || locationStatus === 'granted') return;
+        if (locationStatus === 'requesting') return;
         setLocationStatus('requesting');
         try {
             const coords = await getCurrentPosition();

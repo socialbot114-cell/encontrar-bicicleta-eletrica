@@ -62,7 +62,7 @@ export const fetchWeather = async (lat: number, lon: number): Promise<WeatherCon
         return {
             temperature: current_weather.temperature,
             windSpeed: current_weather.windspeed ?? 0,
-            precipitation: 0,
+            precipitation: response.data.hourly?.precipitation?.[0] ?? 0,
             description: getWeatherDescription(current_weather.weathercode),
             icon: `weather-${current_weather.weathercode}`,
             timestamp: current_weather.time,

@@ -1,5 +1,6 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { SplashScreen } from '@capacitor/splash-screen';
 import { CityBikesProvider } from './context/CityBikesContext';
 import { Layout } from './components/Layout';
 import { LandingPage } from './components/LandingPage';
@@ -27,8 +28,12 @@ const AppLayout = () => (
 );
 
 function App() {
+    useEffect(() => {
+        SplashScreen.hide().catch(() => {});
+    }, []);
+
     return (
-        <BrowserRouter>
+        <HashRouter>
             <Suspense fallback={<AppLoading />}>
                 <Routes>
                     <Route path="/" element={<LandingPage />} />
@@ -37,7 +42,7 @@ function App() {
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </Suspense>
-        </BrowserRouter>
+        </HashRouter>
     );
 }
 

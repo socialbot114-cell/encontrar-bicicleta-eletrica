@@ -7,7 +7,6 @@ import './i18n';
 import App from './App.tsx'
 import { ThemeProvider } from './context/ThemeContext.tsx';
 
-import { SplashScreen } from '@capacitor/splash-screen';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,8 +16,6 @@ const queryClient = new QueryClient({
     },
   },
 })
-
-SplashScreen.hide().catch(() => {});
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
