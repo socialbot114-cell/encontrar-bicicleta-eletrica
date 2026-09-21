@@ -14,8 +14,8 @@ appId: br.com.citybikes
     retryTapIfNoChange: true
 - extendedWaitUntil:
     visible:
-      id: "network-search"
-    timeout: 45000
+      text: "Find near me"
+    timeout: 60000
 - assertNotVisible:
     text: "^(Explore Map|Explorar Mapa)$"
 - waitForAnimationToEnd:
