@@ -71,20 +71,24 @@ jobs:
           fi
           echo "Installing $APP_PATH to $UDID"
           xcrun simctl install "$UDID" "$APP_PATH"
-          # 01 - landing
-          xcrun simctl launch "$UDID" br.com.citybikes || true
-          sleep 10
           mkdir -p "$RUNNER_TEMP/citybikes-$SLUG"
+          # Status bar limpa (9:41, 100% bateria)
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
+          # 01 - landing (hero)
+          xcrun simctl launch "$UDID" br.com.citybikes || true
+          echo "Waiting for webview to render landing..."
+          sleep 18
           xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/citybikes-$SLUG/01-landing.png"
           echo "Captured 01-landing"
-          # 02 - navigate to /app via openURL (capacitor scheme)
+          # 02 - navigate to /app (map) via openURL
           xcrun simctl openurl "$UDID" "capacitor://localhost/#/app" || true
-          sleep 8
+          echo "Waiting for map to render..."
+          sleep 12
           xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/citybikes-$SLUG/02-map.png"
           echo "Captured 02-map"
-          # 03 - dark mode via appearance
+          # 03 - dark mode
           xcrun simctl ui "$UDID" appearance dark || true
-          sleep 3
+          sleep 5
           xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/citybikes-$SLUG/03-map-dark.png"
           echo "Captured 03-map-dark"
           ls -lh "$RUNNER_TEMP/citybikes-$SLUG/"
