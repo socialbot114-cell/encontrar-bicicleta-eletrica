@@ -97,6 +97,11 @@ jobs:
           # Status bar limpa (9:41, 100% bateria).
           xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
 
+          # Launch the app with simctl before Maestro attaches. This avoids
+          # leaving the simulator on the Home screen while Maestro starts.
+          xcrun simctl launch "$UDID" br.com.citybikes
+          sleep 20
+
           # Record the complete interaction flow for manual review.
           cleanup() {
             if [ -n "${VIDEO_PID:-}" ]; then

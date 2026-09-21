@@ -1,10 +1,6 @@
 appId: br.com.citybikes
 
 ---
-- launchApp:
-    clearState: true
-    stopApp: true
-
 - extendedWaitUntil:
     visible:
       text: "^(Explore Map|Explorar Mapa)$"
