@@ -13,11 +13,12 @@ const DeepLinkHandler = () => {
     let listener: { remove: () => Promise<void> } | null = null;
     CapacitorApp.addListener('appUrlOpen', (event: any) => {
       try {
-        const url = event.url || '';
-        if (url.includes('/app') || url.includes('#/app')) {
-          navigate('/app');
-        } else if (url.includes('/privacy')) {
+        const url = (event.url || '').toString();
+        if (url.includes('privacy')) {
           navigate('/privacy');
+        } else {
+          // Qualquer deep link durante screenshots deve abrir o mapa
+          navigate('/app');
         }
       } catch {}
     }).then((l: any) => { listener = l; });
