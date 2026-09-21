@@ -74,13 +74,20 @@ jobs:
           mkdir -p "$RUNNER_TEMP/citybikes-$SLUG"
           # Status bar limpa (9:41, 100% bateria)
           xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
-          # 01 - landing (hero)
+          # 01 - landing (hero) - espera longa para webview carregar no iPhone (Capacitor)
           xcrun simctl launch "$UDID" br.com.citybikes || true
-          echo "Waiting for webview to render landing..."
-          sleep 18
+          echo "Waiting for webview to render landing (iPhone precisa mais tempo)..."
+          sleep 25
           xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/citybikes-$SLUG/01-landing.png"
           echo "Captured 01-landing"
-          # 02 - navigate to /app (map) via openURL
+          # Se captura ficou branca (<100KB), espera mais e recaptura
+          SIZE=$(stat -f%z "$RUNNER_TEMP/citybikes-$SLUG/01-landing.png" 2>/dev/null || stat -c%s "$RUNNER_TEMP/citybikes-$SLUG/01-landing.png")
+          if [ "$SIZE" -lt 100000 ]; then
+            echo "Landing muito pequena ($SIZE bytes), aguardando mais 10s e recapturando..."
+            sleep 10
+            xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/citybikes-$SLUG/01-landing.png"
+          fi
+          # 02 - navigate to /app (map) via openURL (agora com DeepLinkHandler)
           xcrun simctl openurl "$UDID" "capacitor://localhost/#/app" || true
           echo "Waiting for map to render..."
           sleep 12

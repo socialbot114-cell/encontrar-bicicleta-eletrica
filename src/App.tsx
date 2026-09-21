@@ -1,10 +1,30 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { App as CapacitorApp } from '@capacitor/app';
 import { CityBikesProvider } from './context/CityBikesContext';
 import { Layout } from './components/Layout';
 import { LandingPage } from './components/LandingPage';
 import { AppHome } from './components/AppHome';
+
+const DeepLinkHandler = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    let listener: { remove: () => void } | null = null;
+    CapacitorApp.addListener('appUrlOpen', (event) => {
+      try {
+        const url = event.url || '';
+        if (url.includes('/app') || url.includes('#/app')) {
+          navigate('/app');
+        } else if (url.includes('/privacy')) {
+          navigate('/privacy');
+        }
+      } catch {}
+    }).then((l) => { listener = l; });
+    return () => { listener?.remove(); };
+  }, [navigate]);
+  return null;
+};
 
 const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })));
 const MapComponent = lazy(() => import('./components/Map/MapComponent').then(m => ({ default: m.default })));
@@ -34,6 +54,7 @@ function App() {
 
     return (
         <HashRouter>
+            <DeepLinkHandler />
             <Suspense fallback={<AppLoading />}>
                 <Routes>
                     <Route path="/" element={<LandingPage />} />
