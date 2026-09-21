@@ -10,8 +10,8 @@ import { AppHome } from './components/AppHome';
 const DeepLinkHandler = () => {
   const navigate = useNavigate();
   useEffect(() => {
-    let listener: { remove: () => void } | null = null;
-    CapacitorApp.addListener('appUrlOpen', (event) => {
+    let listener: { remove: () => Promise<void> } | null = null;
+    CapacitorApp.addListener('appUrlOpen', (event: any) => {
       try {
         const url = event.url || '';
         if (url.includes('/app') || url.includes('#/app')) {
@@ -20,7 +20,7 @@ const DeepLinkHandler = () => {
           navigate('/privacy');
         }
       } catch {}
-    }).then((l) => { listener = l; });
+    }).then((l: any) => { listener = l; });
     return () => { listener?.remove(); };
   }, [navigate]);
   return null;
