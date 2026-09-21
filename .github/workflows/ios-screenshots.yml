@@ -1,0 +1,95 @@
+name: CityBikes iOS Screenshots
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    runs-on: macos-26
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        device:
+          - name: iPhone 17
+            slug: iphone
+            runtime: iOS-26-5
+          - name: iPad Air 13-inch (M4)
+            slug: ipad
+            runtime: iOS-26-5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Build web
+        run: |
+          npm ci
+          npm run build
+      - name: Sync Capacitor iOS
+        run: |
+          npx cap sync ios
+          pod install --project-directory=ios/App
+      - name: Build for simulator
+        run: |
+          xcodebuild build \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO | xcpretty || cat
+
+      - name: Boot simulator and capture real iPhone screenshots
+        run: |
+          set -euo pipefail
+          DEVICE="${{ matrix.device.name }}"
+          SLUG="${{ matrix.device.slug }}"
+          # Find simulator UDID
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          data=json.load(sys.stdin)
+          name=sys.argv[1]
+          for runtime, devs in data['devices'].items():
+              for d in devs:
+                  if d['name']==name and d['isAvailable']:
+                      print(d['udid']); sys.exit(0)
+          " "$DEVICE")
+          if [ -z "$UDID" ]; then
+            echo "Creating simulator $DEVICE"
+            RUNTIME=$(xcrun simctl list runtimes available -j | python3 -c "import json,sys; d=json.load(sys.stdin); print([r['identifier'] for r in d['runtimes'] if 'iOS-26' in r['identifier']][0])")
+            UDID=$(xcrun simctl create "$DEVICE-$$" "com.apple.CoreSimulator.SimDeviceType.${DEVICE// /-}" "$RUNTIME" 2>/dev/null || xcrun simctl create "CityBikes-$SLUG" "$DEVICE" "$RUNTIME")
+          fi
+          echo "UDID $UDID for $DEVICE"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b || true
+          APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/App.app"
+          if [ ! -d "$APP_PATH" ]; then
+            APP_PATH=$(find "$RUNNER_TEMP/DerivedData" -name "App.app" -type d | head -1)
+          fi
+          echo "Installing $APP_PATH to $UDID"
+          xcrun simctl install "$UDID" "$APP_PATH"
+          # 01 - landing
+          xcrun simctl launch "$UDID" br.com.citybikes || true
+          sleep 10
+          mkdir -p "$RUNNER_TEMP/citybikes-$SLUG"
+          xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/citybikes-$SLUG/01-landing.png"
+          echo "Captured 01-landing"
+          # 02 - navigate to /app via openURL (capacitor scheme)
+          xcrun simctl openurl "$UDID" "capacitor://localhost/#/app" || true
+          sleep 8
+          xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/citybikes-$SLUG/02-map.png"
+          echo "Captured 02-map"
+          # 03 - dark mode via appearance
+          xcrun simctl ui "$UDID" appearance dark || true
+          sleep 3
+          xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/citybikes-$SLUG/03-map-dark.png"
+          echo "Captured 03-map-dark"
+          ls -lh "$RUNNER_TEMP/citybikes-$SLUG/"
+          sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP/citybikes-$SLUG/"*.png || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: citybikes-ios-screenshots-${{ matrix.device.slug }}
+          path: ${{ runner.temp }}/citybikes-${{ matrix.device.slug }}/*.png
