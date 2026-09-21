@@ -113,7 +113,9 @@ jobs:
           xcrun simctl io "$UDID" recordVideo --codec=h264 --force "$VIDEO_PATH" &
           VIDEO_PID=$!
 
-          export MAESTRO_DRIVER_STARTUP_TIMEOUT=180000
+          # XCUITest startup on macos-26 can take several minutes after a
+          # clean simulator boot, especially on the iPad image.
+          export MAESTRO_DRIVER_STARTUP_TIMEOUT=600000
           maestro --device "$UDID" test ".maestro/store-screenshots.yaml" \
             --test-output-dir="$MAESTRO_DIR"
 
