@@ -1,28 +1,70 @@
-import { lazy, Suspense, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useRef } from 'react';
+import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { App as CapacitorApp } from '@capacitor/app';
 import { CityBikesProvider } from './context/CityBikesContext';
 import { Layout } from './components/Layout';
 import { LandingPage } from './components/LandingPage';
 import { AppHome } from './components/AppHome';
+import type { ScreenshotCaptureMode } from './lib/screenshotFixtures';
+
+type CaptureDeepLink = ScreenshotCaptureMode | 'landing';
+
+const captureModeFromUrl = (rawUrl: string): CaptureDeepLink | null => {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== 'citybikes:' || url.hostname !== 'capture') return null;
+    const mode = url.pathname.replace(/^\//, '');
+    return mode === 'landing' || mode === 'map' || mode === 'dark-map' ? mode : null;
+  } catch {
+    return null;
+  }
+};
 
 const DeepLinkHandler = () => {
   const navigate = useNavigate();
+  const handledUrl = useRef<string | null>(null);
+
   useEffect(() => {
     let listener: { remove: () => Promise<void> } | null = null;
-    CapacitorApp.addListener('appUrlOpen', (event: any) => {
+    let active = true;
+
+    const handleUrl = (rawUrl: string) => {
+      if (!rawUrl || handledUrl.current === rawUrl) return;
+      handledUrl.current = rawUrl;
+
       try {
-        const url = (event.url || '').toString();
-        if (url.includes('privacy')) {
+        const captureMode = captureModeFromUrl(rawUrl);
+        if (captureMode) {
+          const theme = captureMode === 'dark-map' ? 'dark' : 'light';
+          window.dispatchEvent(new CustomEvent('citybikes:capture-theme', { detail: { theme } }));
+          navigate(captureMode === 'landing' ? '/' : `/app?capture=${captureMode}`);
+          return;
+        }
+        if (rawUrl.includes('privacy')) {
           navigate('/privacy');
         } else {
-          // Qualquer deep link durante screenshots deve abrir o mapa
           navigate('/app');
         }
-      } catch {}
-    }).then((l: any) => { listener = l; });
-    return () => { listener?.remove(); };
+      } catch {
+        return;
+      }
+    };
+
+    CapacitorApp.addListener('appUrlOpen', (event: { url?: string }) => {
+      handleUrl(event.url || '');
+    }).then((l) => {
+      if (active) listener = l;
+      else void l.remove();
+    });
+    CapacitorApp.getLaunchUrl().then((result) => {
+      if (result?.url) handleUrl(result.url);
+    });
+
+    return () => {
+      active = false;
+      void listener?.remove();
+    };
   }, [navigate]);
   return null;
 };
@@ -36,8 +78,13 @@ const AppLoading = () => (
     </div>
 );
 
-const AppLayout = () => (
-    <CityBikesProvider>
+const AppLayout = () => {
+    const location = useLocation();
+    const captureMode = new URLSearchParams(location.search).get('capture');
+    const validCaptureMode = captureMode === 'map' || captureMode === 'dark-map' ? captureMode : null;
+
+    return (
+    <CityBikesProvider captureMode={validCaptureMode}>
         <Layout>
             <Suspense fallback={<AppLoading />}>
                 <NetworkSearch />
@@ -46,7 +93,8 @@ const AppLayout = () => (
             </Suspense>
         </Layout>
     </CityBikesProvider>
-);
+    );
+};
 
 function App() {
     useEffect(() => {

@@ -5,25 +5,19 @@ appId: br.com.citybikes
     visible:
       text: "^(Explore Map|Explorar Mapa)$"
     timeout: 45000
-- waitForAnimationToEnd
 - takeScreenshot: 01-landing
 
 - tapOn:
     text: "^(Explore Map|Explorar Mapa)$"
     enabled: true
-    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible:
       text: "Find near me"
     timeout: 60000
 - assertNotVisible:
     text: "^(Explore Map|Explorar Mapa)$"
-- waitForAnimationToEnd:
-    timeout: 15000
 - takeScreenshot: 02-map
 
 - tapOn:
-    id: "Toggle Theme"
-- waitForAnimationToEnd:
-    timeout: 5000
+    text: "Toggle Theme"
 - takeScreenshot: 03-map-dark

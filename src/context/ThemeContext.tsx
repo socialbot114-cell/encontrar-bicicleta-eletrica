@@ -40,6 +40,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
     }, [theme]);
 
+    useEffect(() => {
+        const handleCaptureTheme = (event: Event) => {
+            const nextTheme = (event as CustomEvent<{ theme?: Theme }>).detail?.theme;
+            if (nextTheme === 'light' || nextTheme === 'dark') setTheme(nextTheme);
+        };
+
+        window.addEventListener('citybikes:capture-theme', handleCaptureTheme);
+        return () => window.removeEventListener('citybikes:capture-theme', handleCaptureTheme);
+    }, []);
+
     const toggleTheme = () => {
         setTheme((prev) => {
             const next = prev === 'light' ? 'dark' : 'light';

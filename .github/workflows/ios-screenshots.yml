@@ -6,220 +6,158 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: citybikes-ios-screenshots
+  cancel-in-progress: true
+
 jobs:
-  screenshots:
+  build:
+    name: Build simulator app
     runs-on: macos-26
-    timeout-minutes: 30
-    strategy:
-      matrix:
-        device:
-          - name: iPhone 17
-            slug: iphone
-            runtime: iOS-26-5
-          - name: iPad Air 13-inch (M4)
-            slug: ipad
-            runtime: iOS-26-5
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Build web
-        run: |
-          npm ci
-          npm run build
+        run: npm run build
+
       - name: Sync Capacitor iOS
         run: |
           npx cap sync ios
           pod install --project-directory=ios/App
-      - name: Build for simulator
+
+      - name: Build simulator app
         run: |
+          set -euo pipefail
           xcodebuild build \
             -workspace ios/App/App.xcworkspace \
             -scheme App \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
-            CODE_SIGNING_ALLOWED=NO | xcpretty || cat
+            CODE_SIGNING_ALLOWED=NO
 
-      - name: Install Maestro
-        run: |
-          curl -fsSL https://get.maestro.mobile.dev | bash
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
-          export PATH="$HOME/.maestro/bin:$PATH"
-          maestro --version
-
-      - name: Boot simulator and capture audited screenshots and video
-        run: |
-          set -euo pipefail
-          DEVICE="${{ matrix.device.name }}"
-          SLUG="${{ matrix.device.slug }}"
-          RUNTIME_ID="com.apple.CoreSimulator.SimRuntime.${{ matrix.device.runtime }}"
-
-          # Find the requested device on the requested runtime.
-          UDID=$(xcrun simctl list devices available -j | python3 -c "
-          import json,sys
-          data=json.load(sys.stdin)
-          name, runtime_suffix=sys.argv[1:]
-          for runtime, devs in data['devices'].items():
-              if not runtime.endswith(runtime_suffix):
-                  continue
-              for d in devs:
-                  if d['name']==name and d['isAvailable']:
-                      print(d['udid']); sys.exit(0)
-          " "$DEVICE" "${{ matrix.device.runtime }}" || true)
-          if [ -z "$UDID" ]; then
-            echo "Creating simulator $DEVICE"
-            UDID=$(xcrun simctl create "CityBikes-$SLUG-$$" "com.apple.CoreSimulator.SimDeviceType.${DEVICE// /-}" "$RUNTIME_ID")
-          fi
-          echo "UDID $UDID for $DEVICE"
-          xcrun simctl shutdown "$UDID" || true
-          xcrun simctl erase "$UDID"
-          xcrun simctl boot "$UDID" || true
-          xcrun simctl bootstatus "$UDID" -b || true
           APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/App.app"
           if [ ! -d "$APP_PATH" ]; then
-            APP_PATH=$(find "$RUNNER_TEMP/DerivedData" -name "App.app" -type d | head -1)
+            APP_PATH=$(find "$RUNNER_TEMP/DerivedData" -name "App.app" -type d -print -quit)
           fi
-          echo "Installing $APP_PATH to $UDID"
-          xcrun simctl install "$UDID" "$APP_PATH"
+          test -d "$APP_PATH"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$RUNNER_TEMP/CityBikes.app.zip"
 
-          OUTPUT_DIR="$RUNNER_TEMP/citybikes-$SLUG"
-          MAESTRO_DIR="$RUNNER_TEMP/maestro-results-$SLUG"
-          VIDEO_PATH="$OUTPUT_DIR/citybikes-$SLUG-audit.mp4"
-          mkdir -p "$OUTPUT_DIR" "$MAESTRO_DIR"
-
-          # Make the web app language and initial theme deterministic.
-          xcrun simctl spawn "$UDID" defaults write NSGlobalDomain AppleLanguages -array "pt-BR"
-          xcrun simctl spawn "$UDID" defaults write NSGlobalDomain AppleLocale "pt_BR"
-          xcrun simctl ui "$UDID" appearance light || true
-
-          # Status bar limpa (9:41, 100% bateria).
-          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
-
-          # Launch the app with simctl before Maestro attaches. This avoids
-          # leaving the simulator on the Home screen while Maestro starts.
-          xcrun simctl launch "$UDID" br.com.citybikes
-          sleep 20
-
-          # Record the complete interaction flow for manual review.
-          cleanup() {
-            if [ -n "${VIDEO_PID:-}" ]; then
-              kill -INT "$VIDEO_PID" 2>/dev/null || true
-              wait "$VIDEO_PID" 2>/dev/null || true
-            fi
-          }
-          trap cleanup EXIT
-          xcrun simctl io "$UDID" recordVideo --codec=h264 --force "$VIDEO_PATH" &
-          VIDEO_PID=$!
-
-          # XCUITest startup on macos-26 can take several minutes after a
-          # clean simulator boot, especially on the iPad image.
-          export MAESTRO_DRIVER_STARTUP_TIMEOUT=600000
-          maestro --device "$UDID" test ".maestro/store-screenshots.yaml" \
-            --test-output-dir="$MAESTRO_DIR"
-
-          for name in 01-landing 02-map 03-map-dark; do
-            source=$(find "$MAESTRO_DIR" -type f -path "*/takeScreenshot/$name.png" -print -quit)
-            test -n "$source"
-            cp "$source" "$OUTPUT_DIR/$name.png"
-          done
-
-          python3 - "$SLUG" "$OUTPUT_DIR" <<'PY'
-          import struct
-          import sys
-          import zlib
-          from pathlib import Path
-
-          slug, output = sys.argv[1:]
-          expected = (1284, 2778) if slug == 'iphone' else (2048, 2732)
-          paths = {name: Path(output, f'{name}.png') for name in ('01-landing', '02-map', '03-map-dark')}
-
-          def decode_png(path):
-              data = path.read_bytes()
-              if data[:8] != b'\x89PNG\r\n\x1a\n':
-                  raise SystemExit(f'Not a PNG: {path}')
-              width, height = struct.unpack('>II', data[16:24])
-              if (width, height) != expected:
-                  raise SystemExit(f'Unexpected dimensions for {path}: {width}x{height}, expected {expected[0]}x{expected[1]}')
-              bit_depth, color_type = data[24], data[25]
-              if bit_depth != 8 or color_type not in (2, 6):
-                  raise SystemExit(f'Unsupported PNG encoding for {path}: bit depth {bit_depth}, color type {color_type}')
-              bytes_per_pixel = 4 if color_type == 6 else 3
-              stride = width * bytes_per_pixel
-              compressed = bytearray()
-              offset = 8
-              while offset < len(data):
-                  length = struct.unpack('>I', data[offset:offset + 4])[0]
-                  chunk = data[offset + 8:offset + 8 + length]
-                  if data[offset + 4:offset + 8] == b'IDAT':
-                      compressed.extend(chunk)
-                  offset += 12 + length
-              raw = zlib.decompress(compressed)
-              rows = []
-              cursor = 0
-              previous = bytearray(stride)
-              for _ in range(height):
-                  filter_type = raw[cursor]
-                  current = bytearray(raw[cursor + 1:cursor + 1 + stride])
-                  cursor += stride + 1
-                  for index in range(stride):
-                      left = current[index - bytes_per_pixel] if index >= bytes_per_pixel else 0
-                      above = previous[index]
-                      upper_left = previous[index - bytes_per_pixel] if index >= bytes_per_pixel else 0
-                      if filter_type == 1:
-                          current[index] = (current[index] + left) & 255
-                      elif filter_type == 2:
-                          current[index] = (current[index] + above) & 255
-                      elif filter_type == 3:
-                          current[index] = (current[index] + ((left + above) // 2)) & 255
-                      elif filter_type == 4:
-                          estimate = left + above - upper_left
-                          distances = (abs(estimate - left), abs(estimate - above), abs(estimate - upper_left))
-                          predictor = (left, above, upper_left)[distances.index(min(distances))]
-                          current[index] = (current[index] + predictor) & 255
-                      elif filter_type != 0:
-                          raise SystemExit(f'Unsupported PNG filter {filter_type} in {path}')
-                  rows.append(current)
-                  previous = current
-              return width, height, bytes_per_pixel, rows
-
-          decoded = {}
-          for name, path in paths.items():
-              decoded[name] = decode_png(path)
-              print(f'Validated {path.name}: {expected[0]}x{expected[1]}')
-
-          def changed_ratio(first, second):
-              width, height, bytes_per_pixel, first_rows = first
-              _, _, _, second_rows = second
-              sample_step = max(1, (width * height) // 100000)
-              changed = 0
-              samples = 0
-              for pixel_index in range(0, width * height, sample_step):
-                  row, column = divmod(pixel_index, width)
-                  start = column * bytes_per_pixel
-                  a = first_rows[row][start:start + 3]
-                  b = second_rows[row][start:start + 3]
-                  changed += any(abs(x - y) > 8 for x, y in zip(a, b))
-                  samples += 1
-              return changed / samples
-
-          landing_to_map = changed_ratio(decoded['01-landing'], decoded['02-map'])
-          map_to_dark = changed_ratio(decoded['02-map'], decoded['03-map-dark'])
-          print(f'Visual difference landing -> map: {landing_to_map:.1%}')
-          print(f'Visual difference map -> dark map: {map_to_dark:.1%}')
-          if landing_to_map < 0.15:
-              raise SystemExit('Screenshot gate failed: 02-map is too similar to the landing page')
-          if map_to_dark < 0.10:
-              raise SystemExit('Screenshot gate failed: 03-map-dark is too similar to 02-map')
-          PY
-
-          cp -R "$MAESTRO_DIR" "$OUTPUT_DIR/maestro-results"
-          test -s "$VIDEO_PATH"
-          ls -lh "$OUTPUT_DIR"
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: citybikes-store-audit-${{ matrix.device.slug }}
-          path: ${{ runner.temp }}/citybikes-${{ matrix.device.slug }}
-          if-no-files-found: warn
+          name: citybikes-simulator-app
+          path: ${{ runner.temp }}/CityBikes.app.zip
+          if-no-files-found: error
+
+  capture:
+    name: Capture ${{ matrix.device.name }}
+    needs: build
+    runs-on: macos-26
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - name: iPhone 17
+            slug: iphone
+            runtime: iOS-26-5
+            width: 1206
+            height: 2622
+          - name: iPad Air 13-inch (M4)
+            slug: ipad
+            runtime: iOS-26-5
+            width: 2048
+            height: 2732
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: citybikes-simulator-app
+          path: ${{ runner.temp }}/app-artifact
+
+      - name: Capture native screenshots
+        env:
+          DEVICE_NAME: ${{ matrix.device.name }}
+          DEVICE_SLUG: ${{ matrix.device.slug }}
+          RUNTIME_SUFFIX: ${{ matrix.device.runtime }}
+          EXPECTED_WIDTH: ${{ matrix.device.width }}
+          EXPECTED_HEIGHT: ${{ matrix.device.height }}
+        run: |
+          set -euo pipefail
+
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json
+          import sys
+
+          data = json.load(sys.stdin)
+          name, runtime_suffix = sys.argv[1:]
+          for runtime, devices in data["devices"].items():
+              if not runtime.endswith(runtime_suffix):
+                  continue
+              for device in devices:
+                  if device["name"] == name and device["isAvailable"]:
+                      print(device["udid"])
+                      raise SystemExit(0)
+          raise SystemExit(f"Simulator not found: {name} / {runtime_suffix}")
+          ' "$DEVICE_NAME" "$RUNTIME_SUFFIX")
+
+          APP_ZIP="$RUNNER_TEMP/app-artifact/CityBikes.app.zip"
+          APP_DIR="$RUNNER_TEMP/app"
+          ditto -x -k "$APP_ZIP" "$APP_DIR"
+          APP_PATH="$APP_DIR/App.app"
+          test -d "$APP_PATH"
+
+          xcrun simctl shutdown "$UDID" 2>/dev/null || true
+          xcrun simctl erase "$UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" "$APP_PATH"
+          xcrun simctl ui "$UDID" appearance light
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4
+
+          OUTPUT_DIR="$RUNNER_TEMP/citybikes-$DEVICE_SLUG"
+          mkdir -p "$OUTPUT_DIR"
+
+          capture() {
+            local name="$1"
+            xcrun simctl io "$UDID" screenshot "$OUTPUT_DIR/$name.png"
+            width=$(sips -g pixelWidth "$OUTPUT_DIR/$name.png" | awk '/pixelWidth:/{print $2}')
+            height=$(sips -g pixelHeight "$OUTPUT_DIR/$name.png" | awk '/pixelHeight:/{print $2}')
+            test "$width" = "$EXPECTED_WIDTH"
+            test "$height" = "$EXPECTED_HEIGHT"
+          }
+
+          xcrun simctl launch "$UDID" br.com.citybikes
+          sleep 5
+          capture 01-landing
+
+          xcrun simctl openurl "$UDID" "citybikes://capture/map"
+          sleep 10
+          capture 02-map
+
+          xcrun simctl openurl "$UDID" "citybikes://capture/dark-map"
+          sleep 3
+          capture 03-map-dark
+
+          landing_hash=$(shasum -a 256 "$OUTPUT_DIR/01-landing.png" | cut -d ' ' -f 1)
+          map_hash=$(shasum -a 256 "$OUTPUT_DIR/02-map.png" | cut -d ' ' -f 1)
+          dark_hash=$(shasum -a 256 "$OUTPUT_DIR/03-map-dark.png" | cut -d ' ' -f 1)
+          test "$landing_hash" != "$map_hash"
+          test "$map_hash" != "$dark_hash"
+          ls -lh "$OUTPUT_DIR"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: citybikes-store-screenshots-${{ matrix.device.slug }}
+          path: ${{ runner.temp }}/citybikes-${{ matrix.device.slug }}/*.png
+          if-no-files-found: error

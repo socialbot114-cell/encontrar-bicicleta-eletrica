@@ -5,6 +5,7 @@ import { fetchNetworks, fetchNetworkDetails } from '../api/citybikes';
 import * as smartCity from '../api/smartCity';
 import { getCurrentPosition } from '../lib/geolocation';
 import { trackEvent } from '../lib/analytics';
+import { screenshotNetworks, type ScreenshotCaptureMode } from '../lib/screenshotFixtures';
 
 interface CityBikesContextProps {
     networks: Network[];
@@ -50,7 +51,7 @@ interface CityBikesContextProps {
 
 const CityBikesContext = createContext<CityBikesContextProps | undefined>(undefined);
 
-export const CityBikesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const CityBikesProvider: React.FC<{ children: React.ReactNode; captureMode?: ScreenshotCaptureMode | null }> = ({ children, captureMode = null }) => {
     const [userLocation, setUserLocation] = useState<Location | null>(null);
     const [locationStatus, setLocationStatus] = useState<'idle' | 'requesting' | 'granted' | 'denied'>('idle');
     const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(null);
@@ -73,7 +74,7 @@ export const CityBikesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         evStations: false,
         pois: false
     });
-    const [smartDataEnabled, setSmartDataEnabled] = useState(() => localStorage.getItem('citybikes_smart_data') === 'enabled');
+    const [smartDataEnabled, setSmartDataEnabled] = useState(() => !captureMode && localStorage.getItem('citybikes_smart_data') === 'enabled');
 
     // Persist favorites
     useEffect(() => {
@@ -82,8 +83,8 @@ export const CityBikesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     // Queries
     const networksQuery = useQuery({
-        queryKey: ['networks'],
-        queryFn: fetchNetworks,
+        queryKey: ['networks', captureMode ?? 'live'],
+        queryFn: captureMode ? async () => screenshotNetworks : fetchNetworks,
     });
 
     const selectedNetworkQuery = useQuery({
