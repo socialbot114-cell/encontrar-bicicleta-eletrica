@@ -50,7 +50,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let mode = ProcessInfo.processInfo.arguments
             .first(where: { $0.hasPrefix("--citybikes-capture=") })?
             .replacingOccurrences(of: "--citybikes-capture=", with: "")
-        guard mode == "landing" || mode == "map" || mode == "dark-map" else { return }
+        guard mode == "landing" || mode == "map" || mode == "dark-map" || mode == "video-search" else { return }
         guard let viewController = window?.rootViewController as? CAPBridgeViewController,
               let webView = viewController.webView,
               !webView.isLoading else {
@@ -58,7 +58,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             return
         }
 
-        let route = mode == "landing" ? "/" : "/app?capture=\(mode)"
+        let route = mode == "landing" || mode == "video-search" ? "/" : "/app?capture=\(mode)"
         let script = "window.location.hash = '#\(route)'; window.dispatchEvent(new CustomEvent('citybikes:native-capture',{detail:{mode:'\(mode)'}}));"
         webView.evaluateJavaScript(script) { _, error in
             if error != nil {

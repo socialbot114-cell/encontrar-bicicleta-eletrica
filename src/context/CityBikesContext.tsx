@@ -5,7 +5,7 @@ import { fetchNetworks, fetchNetworkDetails } from '../api/citybikes';
 import * as smartCity from '../api/smartCity';
 import { getCurrentPosition } from '../lib/geolocation';
 import { trackEvent } from '../lib/analytics';
-import { screenshotNetworks, type ScreenshotCaptureMode } from '../lib/screenshotFixtures';
+import { screenshotNetworks, videoSearchNetworks, type ScreenshotCaptureMode } from '../lib/screenshotFixtures';
 
 interface CityBikesContextProps {
     networks: Network[];
@@ -84,7 +84,9 @@ export const CityBikesProvider: React.FC<{ children: React.ReactNode; captureMod
     // Queries
     const networksQuery = useQuery({
         queryKey: ['networks', captureMode ?? 'live'],
-        queryFn: captureMode ? async () => screenshotNetworks : fetchNetworks,
+        queryFn: captureMode
+            ? async () => captureMode === 'video-search' ? videoSearchNetworks : screenshotNetworks
+            : fetchNetworks,
     });
 
     const selectedNetworkQuery = useQuery({

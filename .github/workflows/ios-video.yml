@@ -98,6 +98,7 @@ jobs:
           }
           trap stop_recording EXIT
 
+          xcrun simctl launch "$UDID" br.com.citybikes --citybikes-capture=video-search
           maestro test --format junit --output "$OUTPUT_DIR/maestro.xml" .maestro/san-francisco-video.yaml
           sleep 2
           stop_recording

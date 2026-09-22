@@ -16,7 +16,7 @@ const captureModeFromUrl = (rawUrl: string): CaptureDeepLink | null => {
     const url = new URL(rawUrl);
     if (url.protocol !== 'citybikes:' || url.hostname !== 'capture') return null;
     const mode = url.pathname.replace(/^\//, '');
-    return mode === 'landing' || mode === 'map' || mode === 'dark-map' ? mode : null;
+    return mode === 'landing' || mode === 'map' || mode === 'dark-map' || mode === 'video-search' ? mode : null;
   } catch {
     return null;
   }
@@ -31,9 +31,14 @@ const DeepLinkHandler = () => {
     let active = true;
 
     const navigateToCapture = (captureMode: CaptureDeepLink) => {
-      const theme = captureMode === 'dark-map' ? 'dark' : 'light';
-      window.dispatchEvent(new CustomEvent('citybikes:capture-theme', { detail: { theme } }));
-      navigate(captureMode === 'landing' ? '/' : `/app?capture=${captureMode}`);
+        const theme = captureMode === 'dark-map' ? 'dark' : 'light';
+        window.dispatchEvent(new CustomEvent('citybikes:capture-theme', { detail: { theme } }));
+        if (captureMode === 'video-search') {
+            window.sessionStorage.setItem('citybikes:capture-mode', captureMode);
+            navigate('/');
+            return;
+        }
+        navigate(captureMode === 'landing' ? '/' : `/app?capture=${captureMode}`);
     };
 
     const handleUrl = (rawUrl: string) => {
@@ -58,7 +63,7 @@ const DeepLinkHandler = () => {
 
     const handleNativeCapture = (event: Event) => {
       const mode = (event as CustomEvent<{ mode?: string }>).detail?.mode;
-      if (mode === 'landing' || mode === 'map' || mode === 'dark-map') navigateToCapture(mode);
+       if (mode === 'landing' || mode === 'map' || mode === 'dark-map' || mode === 'video-search') navigateToCapture(mode);
     };
 
     CapacitorApp.addListener('appUrlOpen', (event: { url?: string }) => {
@@ -94,7 +99,10 @@ const AppLayout = () => {
     const location = useLocation();
     const { setTheme } = useTheme();
     const captureMode = new URLSearchParams(location.search).get('capture');
-    const validCaptureMode = captureMode === 'map' || captureMode === 'dark-map' ? captureMode : null;
+    const storedCaptureMode = window.sessionStorage.getItem('citybikes:capture-mode');
+    const validCaptureMode = captureMode === 'map' || captureMode === 'dark-map'
+        ? captureMode
+        : storedCaptureMode === 'video-search' ? storedCaptureMode : null;
 
     useEffect(() => {
         if (!validCaptureMode) return;

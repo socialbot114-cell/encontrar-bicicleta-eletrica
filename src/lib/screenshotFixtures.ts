@@ -1,6 +1,6 @@
 import type { Network } from '../types';
 
-export type ScreenshotCaptureMode = 'map' | 'dark-map';
+export type ScreenshotCaptureMode = 'map' | 'dark-map' | 'video-search';
 
 export const screenshotNetworks: Network[] = [
     {
@@ -38,5 +38,14 @@ export const screenshotNetworks: Network[] = [
         name: 'Docomo Bike Share Tokyo',
         href: '/v2/networks/capture-tokyo',
         location: { latitude: 35.6762, longitude: 139.6503, city: 'Tokyo', country: 'Japan' },
+    },
+];
+
+export const videoSearchNetworks: Network[] = [
+    {
+        id: 'video-bay-wheels',
+        name: 'Bay Wheels',
+        href: '/v2/networks/video-bay-wheels',
+        location: { latitude: 37.7749, longitude: -122.4194, city: 'San Francisco', country: 'United States' },
     },
 ];

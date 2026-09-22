@@ -1,8 +1,6 @@
 appId: br.com.citybikes
 
 ---
-- launchApp
-
 - extendedWaitUntil:
     visible:
       text: "^(Explore Map|Explorar Mapa|Explorer la Carte)$"
