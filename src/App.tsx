@@ -6,6 +6,7 @@ import { CityBikesProvider } from './context/CityBikesContext';
 import { Layout } from './components/Layout';
 import { LandingPage } from './components/LandingPage';
 import { AppHome } from './components/AppHome';
+import { useTheme } from './context/ThemeContext';
 import type { ScreenshotCaptureMode } from './lib/screenshotFixtures';
 
 type CaptureDeepLink = ScreenshotCaptureMode | 'landing';
@@ -91,15 +92,17 @@ const AppLoading = () => (
 
 const AppLayout = () => {
     const location = useLocation();
+    const { setTheme } = useTheme();
     const captureMode = new URLSearchParams(location.search).get('capture');
     const validCaptureMode = captureMode === 'map' || captureMode === 'dark-map' ? captureMode : null;
 
     useEffect(() => {
         if (!validCaptureMode) return;
+        setTheme(validCaptureMode === 'dark-map' ? 'dark' : 'light');
         window.dispatchEvent(new CustomEvent('citybikes:capture-theme', {
             detail: { theme: validCaptureMode === 'dark-map' ? 'dark' : 'light' },
         }));
-    }, [validCaptureMode]);
+    }, [setTheme, validCaptureMode]);
 
     return (
     <CityBikesProvider captureMode={validCaptureMode}>

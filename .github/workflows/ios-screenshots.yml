@@ -151,11 +151,12 @@ jobs:
           sleep 8
           capture 03-map-dark
 
-          landing_hash=$(shasum -a 256 "$OUTPUT_DIR/01-landing.png" | cut -d ' ' -f 1)
-          map_hash=$(shasum -a 256 "$OUTPUT_DIR/02-map.png" | cut -d ' ' -f 1)
-          dark_hash=$(shasum -a 256 "$OUTPUT_DIR/03-map-dark.png" | cut -d ' ' -f 1)
-          test "$landing_hash" != "$map_hash"
-          test "$map_hash" != "$dark_hash"
+           landing_hash=$(shasum -a 256 "$OUTPUT_DIR/01-landing.png" | cut -d ' ' -f 1)
+           map_hash=$(shasum -a 256 "$OUTPUT_DIR/02-map.png" | cut -d ' ' -f 1)
+           dark_hash=$(shasum -a 256 "$OUTPUT_DIR/03-map-dark.png" | cut -d ' ' -f 1)
+           printf 'Screenshot hashes: landing=%s map=%s dark-map=%s\n' "$landing_hash" "$map_hash" "$dark_hash"
+           test "$landing_hash" != "$map_hash"
+           test "$map_hash" != "$dark_hash"
           ls -lh "$OUTPUT_DIR"
 
       - uses: actions/upload-artifact@v4
