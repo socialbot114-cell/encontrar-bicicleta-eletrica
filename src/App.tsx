@@ -86,6 +86,69 @@ const DeepLinkHandler = () => {
   return null;
 };
 
+const VideoCaptureSequence = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const stageRef = useRef<'idle' | 'landing' | 'map' | 'typing' | 'done'>('idle');
+
+  useEffect(() => {
+    const queryCapture = new URLSearchParams(location.search).get('capture') === 'video-search';
+    if (queryCapture) {
+      window.sessionStorage.setItem('citybikes:capture-mode', 'video-search');
+      navigate('/', { replace: true });
+      return;
+    }
+
+    if (window.sessionStorage.getItem('citybikes:capture-mode') !== 'video-search') return;
+
+    if (location.pathname === '/' && stageRef.current === 'idle') {
+      stageRef.current = 'landing';
+      const timer = window.setTimeout(() => navigate('/app'), 6000);
+      return () => window.clearTimeout(timer);
+    }
+
+    if (location.pathname !== '/app' || stageRef.current !== 'landing') return;
+
+    stageRef.current = 'map';
+    let timer: number | undefined;
+    let cancelled = false;
+    const query = 'San Francisco';
+
+    const typeQuery = (input: HTMLInputElement, index: number) => {
+      if (cancelled) return;
+      const nextIndex = index + 1;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(input, query.slice(0, nextIndex));
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      if (nextIndex < query.length) {
+        timer = window.setTimeout(() => typeQuery(input, nextIndex), 120);
+      } else {
+        stageRef.current = 'done';
+      }
+    };
+
+    const startTyping = () => {
+      if (cancelled) return;
+      const input = document.getElementById('network-search') as HTMLInputElement | null;
+      if (!input || input.disabled) {
+        timer = window.setTimeout(startTyping, 500);
+        return;
+      }
+      stageRef.current = 'typing';
+      input.focus();
+      typeQuery(input, 0);
+    };
+
+    timer = window.setTimeout(startTyping, 7000);
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [location.pathname, location.search, navigate]);
+
+  return null;
+};
+
 const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })));
 const MapComponent = lazy(() => import('./components/Map/MapComponent').then(m => ({ default: m.default })));
 const NetworkSearch = lazy(() => import('./components/NetworkSearch').then(m => ({ default: m.NetworkSearch })));
@@ -133,6 +196,7 @@ function App() {
     return (
         <HashRouter>
             <DeepLinkHandler />
+            <VideoCaptureSequence />
             <Suspense fallback={<AppLoading />}>
                 <Routes>
                     <Route path="/" element={<LandingPage />} />

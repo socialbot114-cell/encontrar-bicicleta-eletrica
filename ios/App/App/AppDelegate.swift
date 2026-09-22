@@ -58,7 +58,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             return
         }
 
-        let route = mode == "landing" || mode == "video-search" ? "/" : "/app?capture=\(mode)"
+        let route: String
+        if mode == "video-search" {
+            route = "/?capture=video-search"
+        } else {
+            route = mode == "landing" ? "/" : "/app?capture=\(mode)"
+        }
         let script = "window.location.hash = '#\(route)'; window.dispatchEvent(new CustomEvent('citybikes:native-capture',{detail:{mode:'\(mode)'}}));"
         webView.evaluateJavaScript(script) { _, error in
             if error != nil {

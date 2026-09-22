@@ -52,11 +52,6 @@ jobs:
           test -d "$APP_PATH"
           echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
 
-      - name: Install Maestro
-        run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
-
       - name: Record San Francisco search
         run: |
           set -euo pipefail
@@ -99,13 +94,11 @@ jobs:
           trap stop_recording EXIT
 
           xcrun simctl launch "$UDID" br.com.citybikes --citybikes-capture=video-search
-          export MAESTRO_DRIVER_STARTUP_TIMEOUT=300000
-          export MAESTRO_CLI_NO_ANALYTICS=1
-          maestro test --format junit --output "$OUTPUT_DIR/maestro.xml" .maestro/san-francisco-video.yaml
-          sleep 2
+          sleep 25
           stop_recording
           trap - EXIT
           test -s "$VIDEO_PATH"
+          xcrun simctl io "$UDID" screenshot "$OUTPUT_DIR/final-search.png"
           ls -lh "$OUTPUT_DIR"
 
       - uses: actions/upload-artifact@v4
