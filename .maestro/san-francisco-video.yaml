@@ -19,12 +19,12 @@ appId: br.com.citybikes
 
 - extendedWaitUntil:
     visible:
-      text: "^(Search city or network\.\.\.|Buscar cidade ou rede\.\.\.|Buscar ciudad o red\.\.\.|Rechercher une ville ou un réseau\.\.\.)$"
+      text: '^(Search city or network\.\.\.|Buscar cidade ou rede\.\.\.|Buscar ciudad o red\.\.\.|Rechercher une ville ou un réseau\.\.\.)$'
       enabled: true
     timeout: 60000
 
 - tapOn:
-    text: "^(Search city or network\.\.\.|Buscar cidade ou rede\.\.\.|Buscar ciudad o red\.\.\.|Rechercher une ville ou un réseau\.\.\.)$"
+    text: '^(Search city or network\.\.\.|Buscar cidade ou rede\.\.\.|Buscar ciudad o red\.\.\.|Rechercher une ville ou un réseau\.\.\.)$'
     enabled: true
 
 - inputText: "San Francisco"
