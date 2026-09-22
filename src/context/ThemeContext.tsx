@@ -19,8 +19,7 @@ function isNative(): boolean {
 async function setStatusBarStyle(theme: Theme) {
     if (!isNative()) return;
     await StatusBar.setStyle({
-        // Capacitor names describe icon color, not the background theme.
-        style: theme === 'dark' ? Style.Light : Style.Dark,
+        style: theme === 'dark' ? Style.Dark : Style.Light,
     });
 }
 
