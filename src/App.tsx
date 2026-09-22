@@ -94,6 +94,13 @@ const AppLayout = () => {
     const captureMode = new URLSearchParams(location.search).get('capture');
     const validCaptureMode = captureMode === 'map' || captureMode === 'dark-map' ? captureMode : null;
 
+    useEffect(() => {
+        if (!validCaptureMode) return;
+        window.dispatchEvent(new CustomEvent('citybikes:capture-theme', {
+            detail: { theme: validCaptureMode === 'dark-map' ? 'dark' : 'light' },
+        }));
+    }, [validCaptureMode]);
+
     return (
     <CityBikesProvider captureMode={validCaptureMode}>
         <Layout>

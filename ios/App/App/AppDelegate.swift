@@ -52,22 +52,25 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .replacingOccurrences(of: "--citybikes-capture=", with: "")
         guard mode == "landing" || mode == "map" || mode == "dark-map" else { return }
         guard let viewController = window?.rootViewController as? CAPBridgeViewController,
-              let webView = viewController.webView else {
-            if attempt < 20 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    self.dispatchCaptureModeIfRequested(attempt: attempt + 1)
-                }
-            }
+              let webView = viewController.webView,
+              !webView.isLoading else {
+            retryCaptureMode(attempt: attempt)
             return
         }
 
-        let script = "window.dispatchEvent(new CustomEvent('citybikes:native-capture',{detail:{mode:'\(mode)'}}));"
-        webView.evaluateJavaScript(script) { _, _ in
-            if attempt < 10 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    self.dispatchCaptureModeIfRequested(attempt: attempt + 1)
-                }
+        let route = mode == "landing" ? "/" : "/app?capture=\(mode)"
+        let script = "window.location.hash = '#\(route)'; window.dispatchEvent(new CustomEvent('citybikes:native-capture',{detail:{mode:'\(mode)'}}));"
+        webView.evaluateJavaScript(script) { _, error in
+            if error != nil {
+                self.retryCaptureMode(attempt: attempt)
             }
+        }
+    }
+
+    private func retryCaptureMode(attempt: Int) {
+        guard attempt < 60 else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.dispatchCaptureModeIfRequested(attempt: attempt + 1)
         }
     }
 
