@@ -28,10 +28,9 @@ appId: br.com.citybikes
     enabled: true
 
 - inputText: "San Francisco"
+- hideKeyboard
 
 - extendedWaitUntil:
     visible:
       text: ".*(Bay Wheels|Lime San Francisco|Spin San Francisco).*"
     timeout: 30000
-
-- wait: 5000
