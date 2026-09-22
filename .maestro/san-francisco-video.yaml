@@ -26,7 +26,6 @@ appId: br.com.citybikes
     enabled: true
 
 - inputText: "San Francisco"
-- hideKeyboard
 
 - extendedWaitUntil:
     visible:
