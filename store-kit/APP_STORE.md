@@ -93,7 +93,7 @@ Pasta: `store-kit/screenshots/`
   - `02-map.png`
   - `03-map-dark.png`
 
-**Ordem recomendada App Store:** landing → mapa claro → mapa escuro. As capturas são **reais de iPhone/iPad via simctl** (GitHub Actions, iOS 26.5, iPhone 17 / iPad Air 13" M4), capturadas em `CityBikes iOS Screenshots` workflow (run 35675216638). Não são mockups.
+**Ordem recomendada App Store:** landing → mapa claro → mapa escuro. As capturas são **reais de iPhone/iPad via simctl** (GitHub Actions, iOS 26.5, iPhone 17 / iPad Air 13" M4), capturadas em `CityBikes iOS Screenshots` workflow (run 35676433885). Não são mockups.
 
 ## Prints Android reais
 

@@ -2,7 +2,7 @@
 
 ## Estado aprovado
 
-- Run validado: `35675216638`.
+- Run validado: `35676433885`.
 - Resolução iPhone: `1206x2622`, captura nativa do iPhone 17.
 - Resolução iPad: `2048x2732`, captura nativa do iPad Air 13-inch (M4).
 - Formato: PNG RGBA, captura nativa do simulador.
