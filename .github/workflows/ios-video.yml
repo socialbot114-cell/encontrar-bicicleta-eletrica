@@ -1,0 +1,112 @@
+name: CityBikes iOS Video
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: citybikes-ios-video
+  cancel-in-progress: true
+
+jobs:
+  record:
+    name: Record iPhone San Francisco search
+    runs-on: macos-26
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web
+        run: npm run build
+
+      - name: Sync Capacitor iOS
+        run: |
+          npx cap sync ios
+          pod install --project-directory=ios/App
+
+      - name: Build simulator app
+        run: |
+          set -euo pipefail
+          xcodebuild build \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO
+
+          APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/App.app"
+          if [ ! -d "$APP_PATH" ]; then
+            APP_PATH=$(find "$RUNNER_TEMP/DerivedData" -name "App.app" -type d -print -quit)
+          fi
+          test -d "$APP_PATH"
+          echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Record San Francisco search
+        run: |
+          set -euo pipefail
+
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json
+          import sys
+
+          data = json.load(sys.stdin)
+          for runtime, devices in data["devices"].items():
+              if not runtime.endswith("iOS-26-5"):
+                  continue
+              for device in devices:
+                  if device["name"] == "iPhone 17" and device["isAvailable"]:
+                      print(device["udid"])
+                      raise SystemExit(0)
+          raise SystemExit("iPhone 17 / iOS-26-5 simulator not found")
+          ')
+
+          xcrun simctl shutdown "$UDID" 2>/dev/null || true
+          xcrun simctl erase "$UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          sleep 20
+          xcrun simctl install "$UDID" "$APP_PATH"
+          xcrun simctl ui "$UDID" appearance light
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4
+
+          OUTPUT_DIR="$RUNNER_TEMP/citybikes-video"
+          mkdir -p "$OUTPUT_DIR"
+          VIDEO_PATH="$OUTPUT_DIR/citybikes-iphone-san-francisco.mp4"
+
+          xcrun simctl io "$UDID" recordVideo --codec=h264 "$VIDEO_PATH" &
+          RECORDER_PID=$!
+
+          stop_recording() {
+            kill -INT "$RECORDER_PID" 2>/dev/null || true
+            wait "$RECORDER_PID" 2>/dev/null || true
+          }
+          trap stop_recording EXIT
+
+          maestro test --format junit --output "$OUTPUT_DIR/maestro.xml" .maestro/san-francisco-video.yaml
+          sleep 2
+          stop_recording
+          trap - EXIT
+          test -s "$VIDEO_PATH"
+          ls -lh "$OUTPUT_DIR"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: citybikes-iphone-san-francisco-video
+          path: ${{ runner.temp }}/citybikes-video/
+          if-no-files-found: error

@@ -1,0 +1,37 @@
+appId: br.com.citybikes
+
+---
+- launchApp
+
+- extendedWaitUntil:
+    visible:
+      text: "^(Explore Map|Explorar Mapa|Explorer la Carte)$"
+    timeout: 45000
+
+- tapOn:
+    text: "^(Explore Map|Explorar Mapa|Explorer la Carte)$"
+    enabled: true
+
+- extendedWaitUntil:
+    visible:
+      text: "Find near me"
+    timeout: 60000
+
+- extendedWaitUntil:
+    visible:
+      text: "^(Search city or network\.\.\.|Buscar cidade ou rede\.\.\.|Buscar ciudad o red\.\.\.|Rechercher une ville ou un réseau\.\.\.)$"
+      enabled: true
+    timeout: 60000
+
+- tapOn:
+    text: "^(Search city or network\.\.\.|Buscar cidade ou rede\.\.\.|Buscar ciudad o red\.\.\.|Rechercher une ville ou un réseau\.\.\.)$"
+    enabled: true
+
+- inputText: "San Francisco"
+
+- extendedWaitUntil:
+    visible:
+      text: ".*(Bay Wheels|Lime San Francisco|Spin San Francisco).*"
+    timeout: 30000
+
+- wait: 5000
