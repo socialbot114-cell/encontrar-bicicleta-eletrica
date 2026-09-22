@@ -29,6 +29,12 @@ const DeepLinkHandler = () => {
     let listener: { remove: () => Promise<void> } | null = null;
     let active = true;
 
+    const navigateToCapture = (captureMode: CaptureDeepLink) => {
+      const theme = captureMode === 'dark-map' ? 'dark' : 'light';
+      window.dispatchEvent(new CustomEvent('citybikes:capture-theme', { detail: { theme } }));
+      navigate(captureMode === 'landing' ? '/' : `/app?capture=${captureMode}`);
+    };
+
     const handleUrl = (rawUrl: string) => {
       if (!rawUrl || handledUrl.current === rawUrl) return;
       handledUrl.current = rawUrl;
@@ -36,9 +42,7 @@ const DeepLinkHandler = () => {
       try {
         const captureMode = captureModeFromUrl(rawUrl);
         if (captureMode) {
-          const theme = captureMode === 'dark-map' ? 'dark' : 'light';
-          window.dispatchEvent(new CustomEvent('citybikes:capture-theme', { detail: { theme } }));
-          navigate(captureMode === 'landing' ? '/' : `/app?capture=${captureMode}`);
+          navigateToCapture(captureMode);
           return;
         }
         if (rawUrl.includes('privacy')) {
@@ -51,6 +55,11 @@ const DeepLinkHandler = () => {
       }
     };
 
+    const handleNativeCapture = (event: Event) => {
+      const mode = (event as CustomEvent<{ mode?: string }>).detail?.mode;
+      if (mode === 'landing' || mode === 'map' || mode === 'dark-map') navigateToCapture(mode);
+    };
+
     CapacitorApp.addListener('appUrlOpen', (event: { url?: string }) => {
       handleUrl(event.url || '');
     }).then((l) => {
@@ -60,10 +69,12 @@ const DeepLinkHandler = () => {
     CapacitorApp.getLaunchUrl().then((result) => {
       if (result?.url) handleUrl(result.url);
     });
+    window.addEventListener('citybikes:native-capture', handleNativeCapture);
 
     return () => {
       active = false;
       void listener?.remove();
+      window.removeEventListener('citybikes:native-capture', handleNativeCapture);
     };
   }, [navigate]);
   return null;

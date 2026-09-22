@@ -26,7 +26,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+        dispatchCaptureModeIfRequested()
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
@@ -44,6 +44,31 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Feel free to add additional processing here, but if you want the App API to support
         // tracking app url opens, make sure to keep this call
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
+    }
+
+    private func dispatchCaptureModeIfRequested(attempt: Int = 0) {
+        let mode = ProcessInfo.processInfo.arguments
+            .first(where: { $0.hasPrefix("--citybikes-capture=") })?
+            .replacingOccurrences(of: "--citybikes-capture=", with: "")
+        guard mode == "landing" || mode == "map" || mode == "dark-map" else { return }
+        guard let viewController = window?.rootViewController as? CAPBridgeViewController,
+              let webView = viewController.webView else {
+            if attempt < 20 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.dispatchCaptureModeIfRequested(attempt: attempt + 1)
+                }
+            }
+            return
+        }
+
+        let script = "window.dispatchEvent(new CustomEvent('citybikes:native-capture',{detail:{mode:'\(mode)'}}));"
+        webView.evaluateJavaScript(script) { _, _ in
+            if attempt < 10 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.dispatchCaptureModeIfRequested(attempt: attempt + 1)
+                }
+            }
+        }
     }
 
 }
