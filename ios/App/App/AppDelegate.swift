@@ -64,22 +64,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             return
         }
 
-        let route: String
-        if mode == "video-search" {
-            route = "/?capture=video-search"
+        let script = """
+        if (document.documentElement.dataset.citybikesCaptureReady !== 'true') {
+            false;
         } else {
-            route = mode == "landing" ? "/" : "/app?capture=\(mode)"
+            window.dispatchEvent(new CustomEvent('citybikes:native-capture', { detail: { mode: '\(mode)' } }));
+            true;
         }
-        let script = "window.location.hash = '#\(route)'; window.dispatchEvent(new CustomEvent('citybikes:native-capture',{detail:{mode:'\(mode)'}}));"
-        webView.evaluateJavaScript(script) { _, error in
-            if error != nil {
+        """
+        webView.evaluateJavaScript(script) { result, error in
+            if error != nil || (result as? Bool) != true {
                 self.retryCaptureMode(attempt: attempt)
             }
         }
     }
 
     private func retryCaptureMode(attempt: Int) {
-        guard attempt < 60 else { return }
+        guard attempt < 120 else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.dispatchCaptureModeIfRequested(attempt: attempt + 1)
         }

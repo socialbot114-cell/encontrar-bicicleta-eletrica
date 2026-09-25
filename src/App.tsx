@@ -79,11 +79,13 @@ const DeepLinkHandler = () => {
       if (result?.url) handleUrl(result.url);
     });
     window.addEventListener('citybikes:native-capture', handleNativeCapture);
+    document.documentElement.dataset.citybikesCaptureReady = 'true';
 
     return () => {
       active = false;
       void listener?.remove();
       window.removeEventListener('citybikes:native-capture', handleNativeCapture);
+      delete document.documentElement.dataset.citybikesCaptureReady;
     };
   }, [navigate]);
   return null;
