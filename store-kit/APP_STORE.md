@@ -90,9 +90,12 @@ Pasta: `store-kit/screenshots/`
 
 - Os PNGs atualmente no diretório são históricos: `01-landing.png`, `02-map.png` e `03-map-dark.png`.
 - O iPad histórico é o Air 13-inch (M4), 2048×2732. Ele não corresponde ao Air 11-inch (M3) usado na revisão.
-- A nova execução do workflow deve gerar `01-explore.png`, `02-map.png` e `03-map-dark.png` para iPhone 17 (1206×2622) e iPad Air 11-inch (M3) (1640×2360).
+- As novas capturas para a versão 1.0 estão em `store-kit/submission-1.0-screenshots/`:
+  - `iphone/` — iPhone 17, 1206×2622.
+  - `ipad/` — iPad Air 11-inch (M3), 1640×2360.
+  - Cada pasta contém `01-explore.png`, `02-map.png` e `03-map-dark.png`.
 
-**Ordem recomendada App Store:** explorar → mapa claro → mapa escuro. Não substitua os PNGs históricos até revisar a nova execução nativa no workflow `CityBikes iOS Screenshots`.
+**Ordem recomendada App Store:** explorar → mapa claro → mapa escuro. As imagens vieram de capturas nativas do workflow `CityBikes iOS Screenshots` (run `36167464622`). Os arquivos antigos em `store-kit/screenshots/` foram mantidos como histórico.
 
 ## Prints Android reais
 
@@ -110,7 +113,7 @@ python3 -c "import plistlib; plistlib.load(open('ios/App/App/Info.plist','rb'));
 ## Estado da revisão anterior
 
 - **iOS 1.0 (8), Guideline 4.2** — rejeitado em 23/09/2026 no iPad Air 11-inch (M3), por experiência percebida como web app sem funcionalidades iOS suficientes. A atualização abre diretamente no mapa, mantém a prévia de rota ciclável dentro do app e adiciona compartilhamento nativo.
-- O último upload TestFlight foi `1.0.1 (8)`. Para esta resposta à rejeição, a versão escolhida é `1.0`; o próximo workflow TestFlight deve gerar build `9`.
+- O upload TestFlight `1.0 (9)` foi concluído; o App Store Connect mostrou o build como `Processing`. A submissão para revisão da Apple continua manual.
 
 ## Build atual
 

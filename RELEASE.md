@@ -8,10 +8,10 @@
 - Bundle ID: `br.com.citybikes`
 - SKU: `br.comcitybikes`
 - Target marketing version: `1.0`
-- Last successful TestFlight workflow upload: `1.0.1` build `8`
+- Latest TestFlight upload: version `1.0`, build `9` (workflow run `36169044202`); App Store Connect showed `Processing` after upload.
 - Rejected review: version `1.0` (build `8`), Guideline 4.2, September 23, 2026.
 
-The next TestFlight workflow run is expected to create version `1.0`, build `9` (build number uses the workflow run number). The workflow uploads only to TestFlight; App Review submission remains manual. The iOS workflow builds the web assets, synchronizes Capacitor, archives with `xcodebuild`, exports using `ExportOptions.plist`, and validates the archive and exported IPA. It does not create an IPA by manually zipping an `.app`.
+The TestFlight workflow uploads only to TestFlight; App Review submission remains manual. The iOS workflow builds the web assets, synchronizes Capacitor, archives with `xcodebuild`, exports using `ExportOptions.plist`, and validates the archive and exported IPA. It does not create an IPA by manually zipping an `.app`.
 
 ## Identidade
 

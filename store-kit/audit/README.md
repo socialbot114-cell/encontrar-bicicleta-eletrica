@@ -3,8 +3,8 @@
 Esta pasta documenta a qualidade das capturas e o novo fluxo de auditoria.
 
 Ela contém uma cópia histórica dos PNGs em `current/` e vídeos de referência.
-Os PNGs em `../screenshots/` ainda são da execução anterior; não foram geradas
-novas capturas nativas para a resposta à rejeição.
+Os PNGs em `../screenshots/` são da execução anterior. As capturas nativas novas
+para a versão 1.0 ficam em `../submission-1.0-screenshots/`.
 
 ## Capturas históricas atualmente aprovadas
 
@@ -39,6 +39,6 @@ captura oficial.
 1. Execute manualmente o workflow `CityBikes iOS Screenshots` no GitHub.
 2. Baixe `citybikes-store-screenshots-iphone` e `citybikes-store-screenshots-ipad`.
 3. Revise os seis PNGs para verificar carregamento, navegação e tema no iPad Air 11-inch (M3), usado na revisão.
-4. O novo workflow nomeia a primeira tela `01-explore.png`; substitua os PNGs em `store-kit/screenshots/` somente após aprovar a execução.
+4. As capturas aprovadas ficam em `../submission-1.0-screenshots/{iphone,ipad}/`; os arquivos históricos em `../screenshots/` permanecem separados.
 
 O fluxo não cria mockups nem redimensiona a tela nativa do simulador.

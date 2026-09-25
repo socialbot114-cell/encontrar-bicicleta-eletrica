@@ -34,13 +34,14 @@ facilitar a auditoria histórica; não são artefatos oficiais da execução atu
   versão web.
 - Rotas de bicicleta são desenhadas no mapa interno; a estação também pode ser
   compartilhada pela folha nativa de compartilhamento.
-- O workflow está configurado para capturar no iPad Air 11-inch (M3), usado na
-  revisão, e no iPhone 17.
+- Capturas nativas aprovadas pelo workflow `CityBikes iOS Screenshots`, run
+  `36167464622`: iPhone 17 (1206×2622, iOS 26.5) e iPad Air 11-inch (M3)
+  (1640×2360, iOS 26.2).
 - A busca por San Francisco, seleção de rede/estação, localização, rota real,
   desenho de linha, estimativa e compartilhamento por clipboard foram conferidos
   em previews web responsivos de 390×844 e 820×1180.
 - Os previews levaram a correções no posicionamento do cartão de rede no iPad,
   na largura/ordem do resumo de rota no iPhone e no fechamento do popup ao
   mostrar uma rota.
-- As novas capturas **nativas** ainda precisam ser geradas no workflow
-  `CityBikes iOS Screenshots` depois que estas alterações estiverem no GitHub.
+- Os seis PNGs estão em `store-kit/submission-1.0-screenshots/{iphone,ipad}/`,
+  prontos para a submissão manual da versão 1.0.
