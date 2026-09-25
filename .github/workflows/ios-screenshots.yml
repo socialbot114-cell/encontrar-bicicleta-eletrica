@@ -108,7 +108,11 @@ jobs:
                   if device["name"] == name and device["isAvailable"]:
                       print(device["udid"])
                       raise SystemExit(0)
-          raise SystemExit(f"Simulator not found: {name} / {runtime_suffix}")
+          available = {
+              runtime: [device["name"] for device in devices if device["isAvailable"]]
+              for runtime, devices in data["devices"].items()
+          }
+          raise SystemExit(f"Simulator not found: {name} / {runtime_suffix}. Available: {available}")
           ' "$DEVICE_NAME" "$RUNTIME_SUFFIX")
 
           APP_ZIP="$RUNNER_TEMP/app-artifact/CityBikes.app.zip"
