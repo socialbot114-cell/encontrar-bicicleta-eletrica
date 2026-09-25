@@ -86,16 +86,16 @@ Obrigado.
 
 ## Screenshots
 
-Pasta: `store-kit/screenshots/`
+Pasta para a atualização 1.0: `store-kit/submission-1.0-screenshots/`
 
-- Os PNGs atualmente no diretório são históricos: `01-landing.png`, `02-map.png` e `03-map-dark.png`.
+- Os PNGs atualmente em `store-kit/screenshots/` são históricos; o novo conjunto PT-BR é preparado separadamente para esta revisão.
 - O iPad histórico é o Air 13-inch (M4), 2048×2732. Ele não corresponde ao Air 11-inch (M3) usado na revisão.
-- As novas capturas para a versão 1.0 estão em `store-kit/submission-1.0-screenshots/`:
+- As novas capturas PT-BR para a versão 1.0 serão entregues em `store-kit/submission-1.0-screenshots/`:
   - `iphone/` — iPhone 17, 1206×2622.
   - `ipad/` — iPad Air 11-inch (M3), 1640×2360.
-  - Cada pasta contém `01-explore.png`, `02-map.png` e `03-map-dark.png`.
+  - Cada pasta conterá `01-explorar-brasilia.png`, `02-estacao-bikebrasilia.png` e `03-rota-brasilia.png`.
 
-**Ordem recomendada App Store:** explorar → mapa claro → mapa escuro. As imagens vieram de capturas nativas do workflow `CityBikes iOS Screenshots` (run `36167464622`). Os arquivos antigos em `store-kit/screenshots/` foram mantidos como histórico.
+**Ordem recomendada App Store:** explorar Brasília → estação BikeBrasilia → prévia da rota. As capturas oficiais serão nativas e verificadas pelo workflow `CityBikes iOS Screenshots`; os arquivos antigos em `store-kit/screenshots/` ficam como histórico.
 
 ## Prints Android reais
 
@@ -113,7 +113,7 @@ python3 -c "import plistlib; plistlib.load(open('ios/App/App/Info.plist','rb'));
 ## Estado da revisão anterior
 
 - **iOS 1.0 (8), Guideline 4.2** — rejeitado em 23/09/2026 no iPad Air 11-inch (M3), por experiência percebida como web app sem funcionalidades iOS suficientes. A atualização abre diretamente no mapa, mantém a prévia de rota ciclável dentro do app e adiciona compartilhamento nativo.
-- O upload TestFlight `1.0 (9)` foi concluído; o App Store Connect mostrou o build como `Processing`. A submissão para revisão da Apple continua manual.
+- O upload TestFlight `1.0 (9)` foi concluído e processado. A atualização PT-BR está sendo preparada para o build `1.0 (10)`; a submissão para revisão da Apple continua manual.
 
 ## Build atual
 

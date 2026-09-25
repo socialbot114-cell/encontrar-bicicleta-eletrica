@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, ZoomControl } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import * as L from 'leaflet';
@@ -13,7 +13,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SmartDashboard } from '../Dashboard/SmartDashboard';
 import { trackEvent } from '../../lib/analytics';
 import { fetchCyclingRoute, type CyclingRoute } from '../../api/cyclingRouting';
-import { formatFreshness } from '../../lib/navigation';
+import { formatDistanceKm, formatFreshness, parseDataTimestamp } from '../../lib/navigation';
+import { formatCountryName } from '../../lib/geo';
+import { brasiliaCaptureLocation, brasiliaCaptureStationName } from '../../lib/screenshotFixtures';
 
 // Fix Leaflet default icon logic for Vite/Webpack
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -65,17 +67,35 @@ const MapEventListener = () => {
     return null;
 };
 
+const MapPopupStateListener = ({ onPopupStateChange }: { onPopupStateChange: (isOpen: boolean) => void }) => {
+    const map = useMap();
+
+    useEffect(() => {
+        const handlePopupOpen = () => onPopupStateChange(true);
+        const handlePopupClose = () => onPopupStateChange(false);
+        map.on('popupopen', handlePopupOpen);
+        map.on('popupclose', handlePopupClose);
+        return () => {
+            map.off('popupopen', handlePopupOpen);
+            map.off('popupclose', handlePopupClose);
+        };
+    }, [map, onPopupStateChange]);
+
+    return null;
+};
+
 const MapComponent = () => {
     const {
         networks, networksError, networksUpdatedAt, refreshNetworks, selectedNetwork, selectedNetworkError,
         selectedNetworkUpdatedAt, refreshSelectedNetwork, selectNetwork, userLocation, clearSelection,
         locationStatus, weather, airQuality, smartLayers, toggleSmartLayer, favorites,
         toggleFavoriteNetwork, toggleFavoriteStation, requestLocation, smartDataEnabled,
-        toggleSmartData, smartDataError, smartDataUpdatedAt,
+        toggleSmartData, smartDataError, smartDataUpdatedAt, captureMode,
     } = useCityBikes();
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [mapRef, setMapRef] = useState<L.Map | null>(null);
     const [showDashboard, setShowDashboard] = useState(false);
+    const [stationPopupOpen, setStationPopupOpen] = useState(false);
     const [onlyEbikes, setOnlyEbikes] = useState(false);
     const [activeRoute, setActiveRoute] = useState<{ route: CyclingRoute; stationName: string } | null>(null);
     const [routeLoadingStationId, setRouteLoadingStationId] = useState<string | null>(null);
@@ -83,14 +103,29 @@ const MapComponent = () => {
     const [shareFeedback, setShareFeedback] = useState<string | null>(null);
     const didInitialViewRef = useRef(false);
     const routeRequestIdRef = useRef(0);
+    const captureRouteStartedRef = useRef(false);
+    const captureStation = useMemo(() => {
+        if (!selectedNetwork || (captureMode !== 'brasilia-station' && captureMode !== 'brasilia-route' && captureMode !== 'video-search')) return null;
+        return selectedNetwork.stations.find((station) => station.name.includes(brasiliaCaptureStationName))
+            ?? selectedNetwork.stations.find((station) => station.free_bikes > 0)
+            ?? selectedNetwork.stations[0]
+            ?? null;
+    }, [captureMode, selectedNetwork]);
+    const language = i18n.resolvedLanguage ?? i18n.language;
+    const handlePopupStateChange = useCallback((isOpen: boolean) => setStationPopupOpen(isOpen), []);
 
     // Initial world view (shown before any location is available)
     useEffect(() => {
         if (mapRef && !didInitialViewRef.current) {
-            mapRef.setView([20, 0], 2);
+            mapRef.setView(
+                captureMode === 'brasilia-explore'
+                    ? [brasiliaCaptureLocation.latitude, brasiliaCaptureLocation.longitude]
+                    : [20, 0],
+                captureMode === 'brasilia-explore' ? 10 : 2,
+            );
             didInitialViewRef.current = true;
         }
-    }, [mapRef]);
+    }, [captureMode, mapRef]);
 
     // Recenter on user location once it becomes available
     useEffect(() => {
@@ -109,6 +144,32 @@ const MapComponent = () => {
             );
         }
     }, [mapRef, selectedNetwork]);
+
+    useEffect(() => {
+        if (mapRef && (captureMode === 'brasilia-station' || captureMode === 'video-search') && captureStation) {
+            mapRef.setView([captureStation.latitude, captureStation.longitude], 16, { animate: false });
+        }
+    }, [captureMode, captureStation, mapRef, userLocation]);
+
+    useEffect(() => {
+        if (captureMode !== 'brasilia-station' || !captureStation || !userLocation) return;
+        let attempts = 0;
+        let timer = 0;
+        const openCaptureStation = () => {
+            const marker = Array.from(document.querySelectorAll<HTMLElement>('.leaflet-marker-icon.custom-marker'))
+                .find((element) => element.title.includes(captureStation.name));
+            if (marker) {
+                marker.click();
+                return;
+            }
+            if (attempts < 30) {
+                attempts += 1;
+                timer = window.setTimeout(openCaptureStation, 350);
+            }
+        };
+        timer = window.setTimeout(openCaptureStation, 800);
+        return () => window.clearTimeout(timer);
+    }, [captureMode, captureStation, userLocation]);
 
     useEffect(() => {
         if (mapRef && activeRoute) {
@@ -136,7 +197,7 @@ const MapComponent = () => {
         }
     };
 
-    const handlePlanRoute = async (station: { id: string; name: string; latitude: number; longitude: number }) => {
+    const handlePlanRoute = useCallback(async (station: { id: string; name: string; latitude: number; longitude: number }) => {
         if (!userLocation) {
             void requestLocation();
             return;
@@ -154,11 +215,12 @@ const MapComponent = () => {
             trackEvent('CYCLING_ROUTE_PLANNED');
         } catch (error) {
             if (requestId !== routeRequestIdRef.current) return;
-            setRouteError(error instanceof Error ? error.message : 'Could not plan this cycling route.');
+            console.error('Cycling route failed', error);
+            setRouteError(t('route_error_generic'));
         } finally {
             if (requestId === routeRequestIdRef.current) setRouteLoadingStationId(null);
         }
-    };
+    }, [mapRef, requestLocation, t, userLocation]);
 
     const clearCyclingRoute = () => {
         routeRequestIdRef.current += 1;
@@ -167,27 +229,38 @@ const MapComponent = () => {
         setRouteError(null);
     };
 
+    useEffect(() => {
+        if (captureMode !== 'brasilia-route' || !selectedNetwork || !captureStation || !userLocation || captureRouteStartedRef.current) return;
+        captureRouteStartedRef.current = true;
+        void handlePlanRoute(captureStation);
+    }, [captureMode, captureStation, handlePlanRoute, selectedNetwork, userLocation]);
+
     const handleShareStation = async (station: { name: string; latitude: number; longitude: number; free_bikes: number; empty_slots: number | null }) => {
         const mapUrl = `https://www.openstreetmap.org/?mlat=${station.latitude}&mlon=${station.longitude}#map=18/${station.latitude}/${station.longitude}`;
-        const text = `${station.name} — ${selectedNetwork?.location.city ?? ''}. ${station.free_bikes} bikes available; ${station.empty_slots ?? 'availability not reported'} empty docks.`;
+        const text = t('share_station_text', {
+            station: station.name,
+            city: selectedNetwork?.location.city ?? '',
+            bikes: station.free_bikes,
+            docks: station.empty_slots ?? t('availability_not_reported'),
+        });
 
         try {
             const { value } = await Share.canShare();
-            let feedback = 'Station details shared.';
+            let feedback = t('share_feedback');
             if (value) {
-                await Share.share({ title: station.name, text, url: mapUrl, dialogTitle: 'Share bike station' });
+                await Share.share({ title: station.name, text, url: mapUrl, dialogTitle: t('share_station_title') });
             } else if (navigator.clipboard) {
                 await navigator.clipboard.writeText(`${text}\n${mapUrl}`);
-                feedback = 'Station details copied.';
+                feedback = t('share_copied');
             } else {
-                throw new Error('Sharing is not available on this device.');
+                throw new Error(t('share_unavailable'));
             }
             trackEvent('BIKE_STATION_SHARED');
             setShareFeedback(feedback);
             window.setTimeout(() => setShareFeedback(null), 2500);
         } catch (error) {
             if (error instanceof Error && error.name === 'AbortError') return;
-            setShareFeedback(error instanceof Error ? error.message : 'Could not share this station.');
+            setShareFeedback(error instanceof Error ? error.message : t('share_failed'));
             window.setTimeout(() => setShareFeedback(null), 3500);
         }
     };
@@ -211,7 +284,7 @@ const MapComponent = () => {
                                 <div className="flex items-start justify-between gap-2 mb-3">
                                     <div className="flex items-start gap-2 min-w-0">
                                         <button
-                                            aria-label="Toggle favorite network"
+                                            aria-label={t('favorite_network')}
                                             onClick={() => toggleFavoriteNetwork(selectedNetwork.id)}
                                             className="flex h-11 w-11 shrink-0 items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
                                         >
@@ -220,20 +293,20 @@ const MapComponent = () => {
                                         <div className="min-w-0">
                                             <h2 className="text-base md:text-xl font-black text-slate-800 dark:text-white leading-tight break-words">{selectedNetwork.name}</h2>
                                              <p className="text-xs text-slate-500 dark:text-emerald-400 font-bold uppercase tracking-widest">{selectedNetwork.location.city}</p>
-                                             <p className="mt-1 text-[10px] font-semibold text-slate-400">{formatFreshness(selectedNetworkUpdatedAt)}</p>
+                                              <p className="mt-1 text-[10px] font-semibold text-slate-400">{formatFreshness(selectedNetworkUpdatedAt, Date.now(), language)}</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0">
                                         <button
-                                            aria-label="View analytics"
+                                            aria-label={t('view_analytics')}
                                             onClick={() => { trackEvent('DASHBOARD_OPENED'); setShowDashboard(true); }}
                                              className="flex h-11 w-11 items-center justify-center bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-xl transition-all"
-                                            title="View Analytics"
+                                            title={t('view_analytics')}
                                         >
                                             <LayoutDashboard className="w-4 h-4" />
                                         </button>
                                         <button
-                                            aria-label="Close network details"
+                                            aria-label={t('close_network')}
                                             onClick={clearSelection}
                                             className="flex h-11 w-11 items-center justify-center bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 rounded-xl transition-all"
                                         >
@@ -244,29 +317,29 @@ const MapComponent = () => {
                                 {routeLoadingStationId && (
                                     <div className="mb-3 flex items-center gap-2 rounded-xl bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300" role="status">
                                         <Loader2 className="h-4 w-4 animate-spin" />
-                                        Planning a cycling route…
+                                        {t('route_loading')}
                                     </div>
                                 )}
                                 {routeError && (
                                     <div className="mb-3 flex items-start justify-between gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-700 dark:text-red-200" role="alert">
                                         <span>{routeError}</span>
-                                        <button type="button" className="shrink-0 p-1" aria-label="Dismiss route error" onClick={() => setRouteError(null)}><X className="h-4 w-4" /></button>
+                                        <button type="button" className="shrink-0 p-1" aria-label={t('dismiss_message')} onClick={() => setRouteError(null)}><X className="h-4 w-4" /></button>
                                     </div>
                                 )}
                                 {activeRoute && (
-                                    <div className="mb-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3" aria-label="Cycling route summary">
+                                    <div className="mb-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3" aria-label={t('route_summary')} data-testid="cycling-route-summary">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">
-                                                <div className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Cycling route</div>
-                                                <div className="mt-1 truncate text-sm font-extrabold text-slate-800 dark:text-white">To {activeRoute.stationName}</div>
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">{t('route_title')}</div>
+                                                <div className="mt-1 truncate text-sm font-extrabold text-slate-800 dark:text-white">{t('route_to', { station: activeRoute.stationName })}</div>
                                             </div>
-                                            <button type="button" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl hover:bg-emerald-500/10" aria-label="Clear cycling route" onClick={clearCyclingRoute}><X className="h-4 w-4" /></button>
+                                            <button type="button" data-testid="clear-cycling-route" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl hover:bg-emerald-500/10" aria-label={t('route_clear')} onClick={clearCyclingRoute}><X className="h-4 w-4" /></button>
                                         </div>
                                         <div className="mt-2 flex items-baseline gap-3 text-sm font-black text-slate-800 dark:text-white">
-                                            <span>{(activeRoute.route.distanceMeters / 1000).toFixed(1)} km</span>
-                                            <span>{Math.max(1, Math.round(activeRoute.route.durationSeconds / 60))} min</span>
+                                            <span>{t('route_distance', { distance: formatDistanceKm(activeRoute.route.distanceMeters / 1000, language) })}</span>
+                                            <span>{t('route_minutes', { minutes: Math.max(1, Math.round(activeRoute.route.durationSeconds / 60)) })}</span>
                                         </div>
-                                        <p className="mt-1 text-[10px] leading-snug text-slate-500 dark:text-slate-400">Route preview by OpenStreetMap. Follow local road signs and safety rules.</p>
+                                        <p className="mt-1 text-[10px] leading-snug text-slate-500 dark:text-slate-400">{t('route_preview_safety')}</p>
                                     </div>
                                 )}
                                 <div className="grid grid-cols-2 gap-2 text-center">
@@ -287,7 +360,7 @@ const MapComponent = () => {
                                         className={`mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${onlyEbikes ? 'bg-emerald-600 text-white' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'}`}
                                     >
                                         <BatteryCharging className="h-4 w-4" />
-                                        {onlyEbikes ? 'Showing e-bikes' : 'Show e-bike stations'}
+                                        {onlyEbikes ? t('ebike_filter_active') : t('ebike_filter_show')}
                                     </button>
                                 )}
                             </div>
@@ -352,8 +425,8 @@ const MapComponent = () => {
                         className="fixed top-[calc(5rem+env(safe-area-inset-top))] left-3 right-3 md:absolute md:left-6 md:right-auto md:max-w-sm z-[1002] glass-premium px-4 py-3 rounded-2xl border border-red-500/30 shadow-2xl flex items-center gap-3"
                     >
                         <AlertTriangle className="h-5 w-5 shrink-0 text-red-400" />
-                        <span className="min-w-0 flex-1 text-sm text-red-700 dark:text-red-200">Could not refresh stations for this network. Existing data may be stale.</span>
-                        <button onClick={refreshSelectedNetwork} className="shrink-0 rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white">Retry</button>
+                        <span className="min-w-0 flex-1 text-sm text-red-700 dark:text-red-200">{t('network_refresh_error')}</span>
+                        <button onClick={refreshSelectedNetwork} className="shrink-0 rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white">{t('retry')}</button>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -369,62 +442,65 @@ const MapComponent = () => {
                     >
                         <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
                         <div className="min-w-0 text-sm text-red-700 dark:text-red-200 break-words">
-                            Could not load the bike-network list. Check your connection and retry.
-                            {networksUpdatedAt > 0 && <span className="ml-1 text-xs text-slate-500">{formatFreshness(networksUpdatedAt)}</span>}
+                            {t('network_list_error')}
+                            {networksUpdatedAt > 0 && <span className="ml-1 text-xs text-slate-500">{formatFreshness(networksUpdatedAt, Date.now(), language)}</span>}
                         </div>
                         <button
                             onClick={() => refreshNetworks()}
                             className="px-4 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors shrink-0"
                         >
-                            Retry
+                            {t('retry')}
                         </button>
                     </motion.div>
                 )}
             </AnimatePresence>
 
             {/* Layer Control Panel */}
-            <div className="map-layer-controls fixed top-[calc(4.75rem+env(safe-area-inset-top))] md:absolute md:top-[calc(1.5rem+env(safe-area-inset-top))] md:bottom-auto right-3 md:right-6 z-[1000] flex flex-col gap-2">
+             <div
+                 aria-hidden={stationPopupOpen}
+                 className={`map-layer-controls fixed top-[calc(4.75rem+env(safe-area-inset-top))] md:absolute md:top-[calc(5.5rem+env(safe-area-inset-top))] md:bottom-auto right-3 md:right-6 z-[1000] flex flex-col gap-2 ${stationPopupOpen ? 'invisible pointer-events-none' : ''}`}
+             >
                 <div
                     role="group"
-                    aria-label="Map layers"
+                    aria-label={t('map_layers')}
                     className="glass-premium p-1.5 md:p-2 rounded-2xl border border-white/10 shadow-2xl flex flex-col gap-1"
                 >
                     <button
                         type="button"
                         aria-pressed={smartDataEnabled}
-                        aria-label={`${smartDataEnabled ? 'Disable' : 'Enable'} Smart Data coordinate sharing`}
-                        title="Smart Data uses the approximate map center for weather and nearby amenities"
+                        aria-label={t('smart_data_toggle', { action: smartDataEnabled ? t('disable') : t('enable') })}
+                        title={t('smart_data_title')}
                         onClick={toggleSmartData}
                         className={`flex min-h-11 items-center gap-2 rounded-xl px-3 text-[10px] font-black uppercase tracking-wide transition ${smartDataEnabled ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5'}`}
                     >
                         <Cloud className="h-4 w-4 shrink-0" />
-                        <span>Data {smartDataEnabled ? 'on' : 'off'}</span>
+                        <span>{smartDataEnabled ? t('smart_data_on') : t('smart_data_off')}</span>
                     </button>
                     <LayerToggle
                         active={smartLayers.evStations}
                         icon={<Zap className="w-4 h-4" />}
-                        label="EV Power"
+                        label={t('layer_ev')}
                         onClick={() => toggleSmartLayer('evStations')}
                     />
                     <LayerToggle
                         active={smartLayers.earthquakes}
                         icon={<AlertTriangle className="w-4 h-4" />}
-                        label="Alerts"
+                        label={t('layer_alerts')}
                         onClick={() => toggleSmartLayer('earthquakes')}
                     />
                     <LayerToggle
                         active={smartLayers.pois}
                         icon={<Droplet className="w-4 h-4" />}
-                        label="Amenities"
+                        label={t('layer_amenities')}
                         onClick={() => toggleSmartLayer('pois')}
                     />
                 </div>
 
                 {smartDataEnabled && (
                     <div className="glass-premium max-w-40 rounded-xl px-3 py-2 text-[9px] font-semibold leading-tight text-slate-600 shadow-xl dark:text-slate-300" role="status">
-                        Approximate map center is shared with data providers.
-                        {smartDataError && <span className="mt-1 block text-red-500">Smart Data failed to update.</span>}
-                        {!smartDataError && smartDataUpdatedAt > 0 && <span className="mt-1 block text-emerald-600">{formatFreshness(smartDataUpdatedAt)}</span>}
+                        {t('smart_data_notice')}
+                        {smartDataError && <span className="mt-1 block text-red-500">{t('smart_data_failed')}</span>}
+                        {!smartDataError && smartDataUpdatedAt > 0 && <span className="mt-1 block text-emerald-600">{formatFreshness(smartDataUpdatedAt, Date.now(), language)}</span>}
                     </div>
                 )}
 
@@ -432,8 +508,8 @@ const MapComponent = () => {
                     <button
                         onClick={handleLocateMe}
                         className="w-12 h-12 flex items-center justify-center text-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
-                        aria-label="Find near me"
-                        title="Find Near Me"
+                        aria-label={t('find_nearby')}
+                        title={t('find_nearby')}
                     >
                          <LocateFixed className="w-5 h-5 text-emerald-500" />
                     </button>
@@ -455,13 +531,20 @@ const MapComponent = () => {
                 <ZoomControl position="bottomright" />
                 {/* MapUpdater removed to prevent snap-back loop */}
                 <MapEventListener />
+                <MapPopupStateListener onPopupStateChange={handlePopupStateChange} />
                 <SmartLayers />
 
                 {activeRoute && (
-                    <Polyline
-                        positions={activeRoute.route.coordinates}
-                        pathOptions={{ color: '#059669', weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }}
-                    />
+                    <>
+                        <Polyline
+                            positions={activeRoute.route.coordinates}
+                            pathOptions={{ color: '#ffffff', weight: 12, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }}
+                        />
+                        <Polyline
+                            positions={activeRoute.route.coordinates}
+                            pathOptions={{ color: '#047857', weight: 7, opacity: 1, lineCap: 'round', lineJoin: 'round' }}
+                        />
+                    </>
                 )}
 
                 {/* User Location Marker */}
@@ -472,8 +555,8 @@ const MapComponent = () => {
                             className: 'user-location-marker',
                             html: '<div class="w-4 h-4 bg-blue-500 border-2 border-white rounded-full shadow-lg pulse"></div>'
                         })}
-                        alt="Your current location"
-                        title="Your current location"
+                        alt={t('your_location')}
+                        title={t('your_location')}
                     />
                 )}
 
@@ -497,7 +580,7 @@ const MapComponent = () => {
                             }
 
                             return L.divIcon({
-                                html: `<div role="img" aria-label="Cluster of ${count} bike networks" class="${size} ${color} rounded-full flex items-center justify-center text-white font-black border-4 border-white/20 shadow-xl backdrop-blur-sm transition-transform hover:scale-110">
+                                html: `<div role="img" aria-label="${t('cluster_alt', { count })}" class="${size} ${color} rounded-full flex items-center justify-center text-white font-black border-4 border-white/20 shadow-xl backdrop-blur-sm transition-transform hover:scale-110">
                                         ${count}
                                        </div>`,
                                 className: 'custom-cluster-marker',
@@ -510,8 +593,8 @@ const MapComponent = () => {
                                 key={network.id}
                                 position={[network.location.latitude, network.location.longitude]}
                                 icon={bikeIcon}
-                                alt={`${network.name} bike network`}
-                                title={`${network.name}, ${network.location.city}`}
+                                alt={t('network_alt', { network: network.name })}
+                                title={t('network_marker_title', { network: network.name, city: network.location.city })}
                                 eventHandlers={{
                                     click: () => selectNetwork(network.id),
                                 }}
@@ -520,9 +603,9 @@ const MapComponent = () => {
                                     <div className="p-2 min-w-[150px]">
                                         <div className="flex items-center justify-between mb-2">
                                             <strong className="text-slate-800 dark:text-white">{network.name}</strong>
-                                            <Star className={`w-3.5 h-3.5 ${favorites.networks.includes(network.id) ? 'fill-yellow-400 text-yellow-500' : 'text-slate-300'}`} />
-                                        </div>
-                                        <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">{network.location.city}, {network.location.country}</span>
+                                             <Star className={`w-3.5 h-3.5 ${favorites.networks.includes(network.id) ? 'fill-yellow-400 text-yellow-500' : 'text-slate-300'}`} aria-label={t('favorite_network')} />
+                                         </div>
+                                         <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">{network.location.city}, {formatCountryName(network.location.country, language)}</span>
                                     </div>
                                 </Popup>
                             </Marker>
@@ -541,8 +624,8 @@ const MapComponent = () => {
                                 key={station.id}
                                 position={[station.latitude, station.longitude]}
                                 icon={bikeIcon}
-                                alt={`${station.name} bike station, ${station.free_bikes} bikes available`}
-                                title={`${station.name}: ${station.free_bikes} bikes available`}
+                                alt={t('station_alt', { station: station.name, count: station.free_bikes })}
+                                title={t('station_marker_title', { station: station.name, count: station.free_bikes })}
                             >
                                 <Popup className="premium-popup">
                                     <div className="p-2 min-w-[180px]">
@@ -550,7 +633,7 @@ const MapComponent = () => {
                                             <strong className="text-slate-800 dark:text-white leading-tight">{station.name}</strong>
                                             <button
                                                 onClick={() => toggleFavoriteStation(station.id)}
-                                                 aria-label="Toggle favorite station"
+                                                aria-label={t('favorite_station')}
                                                  className="flex h-11 w-11 items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl transition-colors"
                                             >
                                                 <Star className={`w-4 h-4 ${favorites.stations.includes(station.id) ? 'fill-yellow-400 text-yellow-500' : 'text-slate-400'}`} />
@@ -559,7 +642,9 @@ const MapComponent = () => {
                                          {((station.extra?.ebikes ?? 0) > 0 || station.extra?.has_ebikes) && (
                                              <div className="mb-4 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300">
                                                  <BatteryCharging className="h-4 w-4" />
-                                                 {station.extra?.ebikes ?? 'E-bike availability reported'}
+                                                  {station.extra?.ebikes !== undefined
+                                                      ? `${station.extra.ebikes} ${t('ebikes_label')}`
+                                                      : t('ebike_availability_reported')}
                                              </div>
                                          )}
                                         <div className="grid grid-cols-2 gap-3 mb-4">
@@ -578,7 +663,15 @@ const MapComponent = () => {
                                         </div>
 
                                         <p className="mb-3 text-[10px] font-semibold text-slate-400">
-                                            Station {formatFreshness(new Date(station.timestamp).getTime())}
+                                            {t('station_freshness', {
+                                                freshness: formatFreshness(
+                                                    parseDataTimestamp(station.timestamp)
+                                                        ?? parseDataTimestamp(station.extra?.last_updated)
+                                                        ?? selectedNetworkUpdatedAt,
+                                                    Date.now(),
+                                                    language,
+                                                ),
+                                            })}
                                         </p>
 
                                         <div className="grid grid-cols-[1fr_auto] gap-2">
@@ -586,20 +679,21 @@ const MapComponent = () => {
                                                 type="button"
                                                 disabled={routeLoadingStationId === station.id || locationStatus === 'requesting'}
                                                 onClick={() => void handlePlanRoute(station)}
-                                                aria-label={`Plan an in-app cycling route to ${station.name}`}
+                                                data-testid="plan-route-button"
+                                                aria-label={t('plan_route_accessibility', { station: station.name })}
                                                 className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                                             >
                                                 {routeLoadingStationId === station.id || locationStatus === 'requesting'
                                                     ? <Loader2 className="h-4 w-4 animate-spin" />
                                                     : <Navigation className="h-4 w-4" />}
                                                 {userLocation
-                                                    ? activeRoute?.stationName === station.name ? 'Route shown' : 'Plan route'
-                                                    : 'Use location'}
+                                                    ? activeRoute?.stationName === station.name ? t('route_shown') : t('plan_route')
+                                                    : t('use_location')}
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => void handleShareStation(station)}
-                                                aria-label={`Share ${station.name}`}
+                                                aria-label={t('share_station', { station: station.name })}
                                                 className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/10"
                                             >
                                                 <Share2 className="h-4 w-4" />
@@ -608,10 +702,10 @@ const MapComponent = () => {
                                         {!userLocation && (
                                             <p className="mt-2 text-[9px] leading-snug text-slate-500">
                                                 {locationStatus === 'denied'
-                                                    ? 'Location is off. Allow access in Settings to plan a route.'
+                                                    ? t('route_location_denied')
                                                     : locationStatus === 'requesting'
-                                                        ? 'Finding your location…'
-                                                        : 'Use your location to preview a cycling route inside the app.'}
+                                                        ? t('finding_location')
+                                                        : t('route_location_hint')}
                                             </p>
                                         )}
                                         {shareFeedback && <p role="status" className="mt-2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-300">{shareFeedback}</p>}
@@ -632,19 +726,23 @@ const MapComponent = () => {
     );
 };
 
-const LayerToggle = ({ active, icon, label, onClick }: { active: boolean, icon: React.ReactNode, label: string, onClick: () => void }) => (
-    <button
-        onClick={onClick}
-        aria-pressed={active}
-        aria-label={`Toggle ${label} layer`}
-        className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all group/btn ${active
-             ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-            : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 border border-transparent'
-            }`}
-    >
-        <span className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover/btn:scale-110'}`}>{icon}</span>
-        <span className="hidden lg:inline text-xs font-bold uppercase tracking-widest">{label}</span>
-    </button>
-);
+const LayerToggle = ({ active, icon, label, onClick }: { active: boolean, icon: React.ReactNode, label: string, onClick: () => void }) => {
+    const { t } = useTranslation();
+
+    return (
+        <button
+            onClick={onClick}
+            aria-pressed={active}
+            aria-label={t('toggle_layer', { layer: label })}
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all group/btn ${active
+                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 border border-transparent'
+                }`}
+        >
+            <span className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover/btn:scale-110'}`}>{icon}</span>
+            <span className="hidden lg:inline text-xs font-bold uppercase tracking-widest">{label}</span>
+        </button>
+    );
+};
 
 export default MapComponent;

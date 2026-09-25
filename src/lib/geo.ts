@@ -11,3 +11,14 @@ export function distanceKm(
         + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
     return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
+export function formatCountryName(country: string, language = 'en'): string {
+    const value = country.trim();
+    if (!/^[A-Za-z]{2}$/.test(value)) return value;
+    try {
+        const locale = language.startsWith('pt') ? 'pt-BR' : language;
+        return new Intl.DisplayNames([locale], { type: 'region' }).of(value.toUpperCase()) ?? value;
+    } catch {
+        return value;
+    }
+}

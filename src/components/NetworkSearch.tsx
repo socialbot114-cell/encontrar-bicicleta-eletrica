@@ -4,13 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { useCityBikes } from '../context/CityBikesContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { trackEvent } from '../lib/analytics';
-import { distanceKm } from '../lib/geo';
+import { distanceKm, formatCountryName } from '../lib/geo';
+import { formatDistanceKm } from '../lib/navigation';
 
-export const NetworkSearch = () => {
+export const NetworkSearch = ({ captureQuery = '' }: { captureQuery?: string }) => {
     const { networks, selectNetwork, favorites, loading, userLocation } = useCityBikes();
-    const { t } = useTranslation();
-    const [query, setQuery] = useState('');
-    const [isFocused, setIsFocused] = useState(false);
+    const { t, i18n } = useTranslation();
+    const [query, setQuery] = useState(captureQuery);
+    const [isFocused, setIsFocused] = useState(Boolean(captureQuery));
     const searchRef = useRef<HTMLDivElement>(null);
 
     const results = useMemo(() => {
@@ -62,7 +63,7 @@ export const NetworkSearch = () => {
                         type="text"
                         aria-label={t('search_placeholder')}
                         className="w-full min-h-12 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl py-3 pl-12 pr-10 shadow-xl focus:outline-none focus:ring-0 placeholder-slate-400 border border-slate-200 dark:border-slate-800 transition-all font-medium"
-                        placeholder={loading ? "Loading networks..." : t('search_placeholder')}
+                        placeholder={loading ? t('loading_networks') : t('search_placeholder')}
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         onFocus={() => setIsFocused(true)}
@@ -75,7 +76,7 @@ export const NetworkSearch = () => {
                         {query && (
                             <button
                                 type="button"
-                                aria-label="Clear search"
+                                aria-label={t('clear_search')}
                                 onClick={clearSearch}
                                 className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
                             >
@@ -87,11 +88,12 @@ export const NetworkSearch = () => {
 
                 {/* Results Dropdown */}
                 {query.length >= 2 && isFocused && (
-                    <div className="absolute top-full left-0 w-full mt-2 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden max-h-[50dvh] overflow-y-auto border border-slate-200 dark:border-slate-800 transition-all animate-in fade-in zoom-in-95 duration-200">
+                    <div className="network-search-results absolute top-full left-0 w-full mt-2 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden max-h-[50dvh] overflow-y-auto border border-slate-200 dark:border-slate-800 transition-all animate-in fade-in zoom-in-95 duration-200">
                         {results.length > 0 ? (
                             results.map(network => (
                                 <button
                                     key={network.id}
+                                    data-testid={`network-result-${network.id}`}
                                     className="w-full text-left px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors duration-200 flex items-center justify-between group"
 onClick={() => {
     trackEvent('NETWORK_SELECTED', { source: 'search' });
@@ -105,7 +107,7 @@ onClick={() => {
                                             {network.name}
                                         </div>
                                         <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-0.5">
-                                            {network.location.city}, {network.location.country}{userLocation && ` - ${distanceKm(userLocation, network.location).toFixed(1)} km`}
+                                            {network.location.city}, {formatCountryName(network.location.country, i18n.resolvedLanguage ?? i18n.language)}{userLocation && ` · ${t('distance_away', { distance: formatDistanceKm(distanceKm(userLocation, network.location), i18n.resolvedLanguage ?? i18n.language) })}`}
                                         </div>
                                     </div>
                                     {favorites.networks.includes(network.id) && (
@@ -115,7 +117,7 @@ onClick={() => {
                             ))
                         ) : (
                             <div className="p-4 text-center text-slate-500 text-sm font-medium">
-                                No networks found matching "{query}"
+                                {t('no_networks_found', { query })}
                             </div>
                         )}
                     </div>

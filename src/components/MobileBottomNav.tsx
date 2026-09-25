@@ -9,7 +9,7 @@ export const MobileBottomNav = () => {
     const { clearSelection } = useCityBikes();
 
     return (
-        <nav aria-label="Mobile navigation" className="mobile-bottom-nav md:hidden">
+        <nav aria-label={t('mobile_navigation')} className="mobile-bottom-nav md:hidden">
             <Link to="/app" aria-current="page" className="mobile-nav-item mobile-nav-item-active">
                 <Compass aria-hidden="true" className="h-5 w-5" />
                 <span>{t('nav_map', 'Map')}</span>

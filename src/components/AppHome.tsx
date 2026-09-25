@@ -2,10 +2,11 @@ import { LocateFixed, MapPinned, ArrowUpRight, Star, Sparkles } from 'lucide-rea
 import { useTranslation } from 'react-i18next';
 import { useCityBikes } from '../context/CityBikesContext';
 import { trackEvent } from '../lib/analytics';
-import { distanceKm } from '../lib/geo';
+import { distanceKm, formatCountryName } from '../lib/geo';
+import { formatDistanceKm } from '../lib/navigation';
 
 export const AppHome = () => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const { networks, favorites, locationStatus, requestLocation, selectNetwork, loading, selectedNetwork, userLocation } = useCityBikes();
     const favoriteNetworks = networks.filter((network) => favorites.networks.includes(network.id)).slice(0, 3);
     const suggestedNetworks = (favoriteNetworks.length ? favoriteNetworks : networks)
@@ -62,8 +63,8 @@ export const AppHome = () => {
                     >
                         <span className="min-w-0">
                             <span className="block truncate text-sm font-extrabold text-slate-800 dark:text-white">{network.name}</span>
-                            <span className="mt-1 block truncate text-[10px] font-bold uppercase tracking-wider text-slate-400">{network.location.city}, {network.location.country}</span>
-                            {distance !== null && <span className="mt-1 block text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{distance.toFixed(1)} km away</span>}
+                            <span className="mt-1 block truncate text-[10px] font-bold uppercase tracking-wider text-slate-400">{network.location.city}, {formatCountryName(network.location.country, i18n.resolvedLanguage ?? i18n.language)}</span>
+                            {distance !== null && <span className="mt-1 block text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{t('distance_away', { distance: formatDistanceKm(distance, i18n.resolvedLanguage ?? i18n.language) })}</span>}
                         </span>
                         {favorites.networks.includes(network.id) ? <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" /> : <ArrowUpRight className="h-4 w-4 shrink-0 text-emerald-500 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />}
                     </button>

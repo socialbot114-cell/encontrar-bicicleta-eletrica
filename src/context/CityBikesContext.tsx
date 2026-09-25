@@ -5,9 +5,16 @@ import { fetchNetworks, fetchNetworkDetails } from '../api/citybikes';
 import * as smartCity from '../api/smartCity';
 import { getCurrentPosition } from '../lib/geolocation';
 import { trackEvent } from '../lib/analytics';
-import { screenshotNetworks, videoSearchNetworks, type ScreenshotCaptureMode } from '../lib/screenshotFixtures';
+import {
+    brasiliaCaptureLocation,
+    isBrasiliaCaptureMode,
+    screenshotNetworks,
+    videoSearchNetworks,
+    type ScreenshotCaptureMode,
+} from '../lib/screenshotFixtures';
 
 interface CityBikesContextProps {
+    captureMode: ScreenshotCaptureMode | null;
     networks: Network[];
     loading: boolean;
     networksError: Error | null;
@@ -54,8 +61,15 @@ const CityBikesContext = createContext<CityBikesContextProps | undefined>(undefi
 export const CityBikesProvider: React.FC<{ children: React.ReactNode; captureMode?: ScreenshotCaptureMode | null }> = ({ children, captureMode = null }) => {
     const [userLocation, setUserLocation] = useState<Location | null>(null);
     const [locationStatus, setLocationStatus] = useState<'idle' | 'requesting' | 'granted' | 'denied'>('idle');
-    const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(null);
-    const [mapCenter, setMapCenter] = useState<{ lat: number, lon: number } | null>(null);
+    const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(() =>
+        captureMode === 'brasilia-station' || captureMode === 'brasilia-route' ? 'bikebrasilia' : null,
+    );
+    const [mapCenter, setMapCenter] = useState<{ lat: number, lon: number } | null>(() =>
+        isBrasiliaCaptureMode(captureMode)
+            ? { lat: brasiliaCaptureLocation.latitude, lon: brasiliaCaptureLocation.longitude }
+            : null,
+    );
+    const captureLocationRequestedRef = React.useRef(false);
     const [favorites, setFavorites] = useState<{ networks: string[], stations: string[] }>(() => {
         try {
             const saved = localStorage.getItem('citybikes_favorites');
@@ -84,9 +98,16 @@ export const CityBikesProvider: React.FC<{ children: React.ReactNode; captureMod
     // Queries
     const networksQuery = useQuery({
         queryKey: ['networks', captureMode ?? 'live'],
-        queryFn: captureMode
-            ? async () => captureMode === 'video-search' ? videoSearchNetworks : screenshotNetworks
-            : fetchNetworks,
+        queryFn: async () => {
+            if (captureMode === 'map' || captureMode === 'dark-map') return screenshotNetworks;
+            if (captureMode === 'video-search' || captureMode === 'brasilia-station' || captureMode === 'brasilia-route') {
+                return videoSearchNetworks;
+            }
+            const liveNetworks = await fetchNetworks();
+            return captureMode === 'brasilia-explore'
+                ? liveNetworks.filter((network) => network.location.country.toUpperCase() === 'BR')
+                : liveNetworks;
+        },
     });
 
     const selectedNetworkQuery = useQuery({
@@ -179,7 +200,7 @@ export const CityBikesProvider: React.FC<{ children: React.ReactNode; captureMod
         setSelectedNetworkId(null);
     };
 
-    const requestLocation = async () => {
+    const requestLocation = useCallback(async () => {
         if (locationStatus === 'requesting') return;
         setLocationStatus('requesting');
         try {
@@ -199,12 +220,20 @@ export const CityBikesProvider: React.FC<{ children: React.ReactNode; captureMod
             setLocationStatus('denied');
             trackEvent('LOCATION_PERMISSION_RESULT', { result: 'denied' });
         }
-    };
+    }, [locationStatus]);
+
+    useEffect(() => {
+        if (!isBrasiliaCaptureMode(captureMode) || captureLocationRequestedRef.current) return;
+        captureLocationRequestedRef.current = true;
+        const timer = window.setTimeout(() => void requestLocation(), 0);
+        return () => window.clearTimeout(timer);
+    }, [captureMode, requestLocation]);
 
     const loading = networksQuery.isLoading || selectedNetworkQuery.isFetching;
 
     return (
         <CityBikesContext.Provider value={{
+            captureMode,
             networks: networksQuery.data || [],
             loading,
             networksError: networksQuery.error ?? null,

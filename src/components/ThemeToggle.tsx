@@ -1,16 +1,18 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sun, Moon } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 export const ThemeToggle = () => {
     const { theme, toggleTheme } = useTheme();
+    const { t } = useTranslation();
 
     return (
         <button
             type="button"
             onClick={toggleTheme}
             className="relative p-3 rounded-xl bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700/50 transition-all duration-300 group"
-            aria-label="Toggle Theme"
+            aria-label={t('toggle_theme')}
         >
             <div className="relative w-6 h-6 flex items-center justify-center">
                 <AnimatePresence mode="wait" initial={false}>

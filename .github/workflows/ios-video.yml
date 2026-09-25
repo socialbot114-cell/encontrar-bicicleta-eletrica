@@ -1,4 +1,4 @@
-name: CityBikes iOS Video
+name: CityBikes iOS Brasília Journey
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   record:
-    name: Record iPhone San Francisco search
+    name: Record iPhone Brasília station route
     runs-on: macos-26
     timeout-minutes: 30
 
@@ -52,7 +52,7 @@ jobs:
           test -d "$APP_PATH"
           echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
 
-      - name: Record San Francisco search
+      - name: Record Brasília network and route walkthrough
         run: |
           set -euo pipefail
 
@@ -76,13 +76,17 @@ jobs:
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
           sleep 20
+          xcrun simctl spawn "$UDID" defaults write NSGlobalDomain AppleLanguages -array pt-BR
+          xcrun simctl spawn "$UDID" defaults write NSGlobalDomain AppleLocale pt_BR
           xcrun simctl install "$UDID" "$APP_PATH"
+          xcrun simctl privacy "$UDID" grant location br.com.citybikes
+          xcrun simctl location "$UDID" set -15.793889,-47.882778
           xcrun simctl ui "$UDID" appearance light
           xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4
 
           OUTPUT_DIR="$RUNNER_TEMP/citybikes-video"
           mkdir -p "$OUTPUT_DIR"
-          VIDEO_PATH="$OUTPUT_DIR/citybikes-iphone-san-francisco.mp4"
+          VIDEO_PATH="$OUTPUT_DIR/citybikes-iphone-brasilia-journey.mp4"
 
           xcrun simctl io "$UDID" recordVideo --codec=h264 "$VIDEO_PATH" &
           RECORDER_PID=$!
@@ -94,15 +98,36 @@ jobs:
           trap stop_recording EXIT
 
           xcrun simctl launch "$UDID" br.com.citybikes --citybikes-capture=video-search
-          sleep 25
+          sleep 75
           stop_recording
           trap - EXIT
           test -s "$VIDEO_PATH"
-          xcrun simctl io "$UDID" screenshot "$OUTPUT_DIR/final-search.png"
+          xcrun simctl io "$UDID" screenshot "$OUTPUT_DIR/final-route.png"
+          swift scripts/validate-ios-screenshot.swift "$OUTPUT_DIR/final-route.png" "Rota ciclável" "Funarte" "km" "min"
+          if ! command -v ffprobe >/dev/null 2>&1; then
+            brew install ffmpeg
+          fi
+          ffprobe -v error -select_streams v:0 \
+            -show_entries stream=codec_name,width,height \
+            -show_entries format=duration \
+            -of json "$VIDEO_PATH" > "$OUTPUT_DIR/video-metadata.json"
+          python3 - "$OUTPUT_DIR/video-metadata.json" <<'PY'
+          import json
+          import sys
+          with open(sys.argv[1], encoding='utf-8') as file:
+              metadata = json.load(file)
+          video = metadata['streams'][0]
+          duration = float(metadata['format']['duration'])
+          assert video['codec_name'] == 'h264', video
+          assert (video['width'], video['height']) == (1206, 2622), video
+          assert duration >= 20, duration
+          print(f"Validated Brasília journey video: {duration:.1f}s {video['width']}x{video['height']} H.264")
+          PY
           ls -lh "$OUTPUT_DIR"
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: citybikes-iphone-san-francisco-video
+          name: citybikes-iphone-brasilia-journey
           path: ${{ runner.temp }}/citybikes-video/
-          if-no-files-found: error
+          if-no-files-found: warn

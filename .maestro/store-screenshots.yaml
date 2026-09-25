@@ -3,16 +3,33 @@ appId: br.com.citybikes
 ---
 - extendedWaitUntil:
     visible:
-      text: "^(Find your next ride|Encontre sua próxima viagem|Encuentra tu próximo viaje|Trouvez votre prochain trajet)$"
+      text: "^(Encontre sua próxima pedalada|Find your next ride)$"
     timeout: 45000
-- takeScreenshot: 01-explore
-
-- extendedWaitUntil:
-    visible:
-      id: network-search
-    timeout: 60000
-- takeScreenshot: 02-map
+- takeScreenshot: 01-explorar
 
 - tapOn:
-    text: "Toggle Theme"
-- takeScreenshot: 03-map-dark
+    id: network-search
+- inputText: Brasília
+- extendedWaitUntil:
+    visible:
+      text: "BikeBrasilia"
+    timeout: 60000
+- takeScreenshot: 02-busca-brasilia
+
+- tapOn:
+    text: "BikeBrasilia"
+- extendedWaitUntil:
+    visible:
+      text: "BikeBrasilia"
+    timeout: 45000
+- extendedWaitUntil:
+    visible:
+      text: "17 - Funarte: .* bicicletas disponíveis"
+    timeout: 45000
+- tapOn:
+    text: "17 - Funarte: .* bicicletas disponíveis"
+- extendedWaitUntil:
+    visible:
+      text: "Planejar rota ciclável no app até 17 - Funarte"
+    timeout: 30000
+- takeScreenshot: 03-estacao-bikebrasilia

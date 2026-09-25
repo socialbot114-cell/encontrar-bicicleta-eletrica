@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 import { fetchCyclingRoute } from '../api/cyclingRouting';
-import { formatFreshness } from './navigation';
+import { formatCountryName } from './geo';
+import { formatDistanceKm, formatFreshness, parseDataTimestamp } from './navigation';
+import { brasiliaCaptureStationName, isBrasiliaCaptureMode, isScreenshotCaptureMode, videoSearchNetworks } from './screenshotFixtures';
 
 describe('in-app cycling routes', () => {
     it('requests a bicycle route and converts GeoJSON coordinates for the map', async () => {
@@ -60,5 +62,28 @@ describe('freshness labels', () => {
         expect(formatFreshness(now - 30_000, now)).toBe('Updated just now');
         expect(formatFreshness(now - 5 * 60_000, now)).toBe('Updated 5 minutes ago');
         expect(formatFreshness(now - 2 * 60 * 60_000, now)).toBe('Updated 2 hours ago');
+    });
+
+    it('formats freshness and route distances in Brazilian Portuguese', () => {
+        expect(formatFreshness(now - 5 * 60_000, now, 'pt-BR')).toBe('Atualizado há 5 minutos');
+        expect(formatDistanceKm(2.6648, 'pt')).toBe('2,7');
+        expect(formatCountryName('BR', 'pt')).toBe('Brasil');
+    });
+
+    it('normalizes the CityBik.es timestamp format and seconds-based values', () => {
+        expect(parseDataTimestamp('2026-09-25T19:24:24.210153+00:00Z')).toBe(Date.parse('2026-09-25T19:24:24.210153+00:00'));
+        expect(parseDataTimestamp(1_790_364_079)).toBe(1_790_364_079_000);
+    });
+});
+
+describe('Brasília App Store capture setup', () => {
+    it('uses separate, localized capture modes and the live BikeBrasilia network ID', () => {
+        expect(isScreenshotCaptureMode('brasilia-explore')).toBe(true);
+        expect(isScreenshotCaptureMode('brasilia-station')).toBe(true);
+        expect(isScreenshotCaptureMode('brasilia-route')).toBe(true);
+        expect(isBrasiliaCaptureMode('video-search')).toBe(true);
+        expect(videoSearchNetworks[0].id).toBe('bikebrasilia');
+        expect(videoSearchNetworks[0].location.city).toBe('Brasília');
+        expect(brasiliaCaptureStationName).toBe('17 - Funarte');
     });
 });

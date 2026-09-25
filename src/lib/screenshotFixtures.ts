@@ -1,6 +1,32 @@
-import type { Network } from '../types';
+import type { Location, Network } from '../types';
 
-export type ScreenshotCaptureMode = 'map' | 'dark-map' | 'video-search';
+export type ScreenshotCaptureMode =
+    | 'map'
+    | 'dark-map'
+    | 'video-search'
+    | 'brasilia-explore'
+    | 'brasilia-station'
+    | 'brasilia-route';
+
+export const isScreenshotCaptureMode = (value: string | null): value is ScreenshotCaptureMode =>
+    value === 'map'
+    || value === 'dark-map'
+    || value === 'video-search'
+    || value === 'brasilia-explore'
+    || value === 'brasilia-station'
+    || value === 'brasilia-route';
+
+export const isBrasiliaCaptureMode = (mode: ScreenshotCaptureMode | null): boolean =>
+    mode === 'brasilia-explore' || mode === 'brasilia-station' || mode === 'brasilia-route' || mode === 'video-search';
+
+export const brasiliaCaptureLocation: Location = {
+    latitude: -15.793889,
+    longitude: -47.882778,
+    city: 'Brasília',
+    country: 'BR',
+};
+
+export const brasiliaCaptureStationName = '17 - Funarte';
 
 export const screenshotNetworks: Network[] = [
     {
@@ -43,9 +69,9 @@ export const screenshotNetworks: Network[] = [
 
 export const videoSearchNetworks: Network[] = [
     {
-        id: 'video-bay-wheels',
-        name: 'Bay Wheels',
-        href: '/v2/networks/video-bay-wheels',
-        location: { latitude: 37.7749, longitude: -122.4194, city: 'San Francisco', country: 'United States' },
+        id: 'bikebrasilia',
+        name: 'BikeBrasilia',
+        href: '/v2/networks/bikebrasilia',
+        location: { latitude: -15.795115, longitude: -47.887424, city: 'Brasília', country: 'BR' },
     },
 ];

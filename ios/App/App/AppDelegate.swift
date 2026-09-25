@@ -50,7 +50,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let mode = ProcessInfo.processInfo.arguments
             .first(where: { $0.hasPrefix("--citybikes-capture=") })?
             .replacingOccurrences(of: "--citybikes-capture=", with: "")
-        guard mode == "landing" || mode == "map" || mode == "dark-map" || mode == "video-search" else { return }
+        guard mode == "landing"
+            || mode == "map"
+            || mode == "dark-map"
+            || mode == "video-search"
+            || mode == "brasilia-explore"
+            || mode == "brasilia-station"
+            || mode == "brasilia-route" else { return }
         guard let viewController = window?.rootViewController as? CAPBridgeViewController,
               let webView = viewController.webView,
               !webView.isLoading else {

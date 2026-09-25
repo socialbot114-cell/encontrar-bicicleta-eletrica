@@ -2,12 +2,15 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
 import { MobileBottomNav } from './MobileBottomNav';
+import { useTranslation } from 'react-i18next';
 
 interface LayoutProps {
     children: React.ReactNode;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
+    const { t } = useTranslation();
+
     return (
         <div className="app-shell flex bg-slate-50 dark:bg-[#0B0F19] transition-colors duration-500 text-slate-900 dark:text-slate-100 overflow-hidden">
             <aside className="hidden md:flex w-20 flex-col items-center py-6 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-20 transition-colors">
@@ -27,10 +30,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
                 <Link
                     to="/privacy"
-                    aria-label="Privacy policy"
+                    aria-label={t('nav_privacy')}
                     className="p-3 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-blue-600 dark:hover:text-white transition-all"
                 >
-                    Privacy
+                    {t('nav_privacy')}
                 </Link>
             </aside>
 

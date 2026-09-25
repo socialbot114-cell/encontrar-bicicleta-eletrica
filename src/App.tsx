@@ -8,16 +8,18 @@ import { Layout } from './components/Layout';
 import { LandingPage } from './components/LandingPage';
 import { AppHome } from './components/AppHome';
 import { useTheme } from './context/ThemeContext';
-import type { ScreenshotCaptureMode } from './lib/screenshotFixtures';
+import i18n from './i18n';
+import { isScreenshotCaptureMode, type ScreenshotCaptureMode } from './lib/screenshotFixtures';
 
 type CaptureDeepLink = ScreenshotCaptureMode | 'landing';
+type VideoCaptureStage = 'idle' | 'landing' | 'typing' | 'finding-network' | 'opening-station' | 'planning-route' | 'done';
 
 const captureModeFromUrl = (rawUrl: string): CaptureDeepLink | null => {
   try {
     const url = new URL(rawUrl);
     if (url.protocol !== 'citybikes:' || url.hostname !== 'capture') return null;
     const mode = url.pathname.replace(/^\//, '');
-    return mode === 'landing' || mode === 'map' || mode === 'dark-map' || mode === 'video-search' ? mode : null;
+    return mode === 'landing' || isScreenshotCaptureMode(mode) ? mode : null;
   } catch {
     return null;
   }
@@ -64,7 +66,7 @@ const DeepLinkHandler = () => {
 
     const handleNativeCapture = (event: Event) => {
       const mode = (event as CustomEvent<{ mode?: string }>).detail?.mode;
-       if (mode === 'landing' || mode === 'map' || mode === 'dark-map' || mode === 'video-search') navigateToCapture(mode);
+       if (mode === 'landing' || (mode && isScreenshotCaptureMode(mode))) navigateToCapture(mode);
     };
 
     CapacitorApp.addListener('appUrlOpen', (event: { url?: string }) => {
@@ -90,7 +92,7 @@ const DeepLinkHandler = () => {
 const VideoCaptureSequence = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const stageRef = useRef<'idle' | 'landing' | 'map' | 'typing' | 'done'>('idle');
+  const stageRef = useRef<VideoCaptureStage>('idle');
 
   useEffect(() => {
     const queryCapture = new URLSearchParams(location.search).get('capture') === 'video-search';
@@ -115,10 +117,26 @@ const VideoCaptureSequence = () => {
 
     if (location.pathname !== '/app' || stageRef.current !== 'landing') return;
 
-    stageRef.current = 'map';
+    stageRef.current = 'typing';
     let timer: number | undefined;
     let cancelled = false;
-    const query = 'San Francisco';
+    const startedAt = Date.now();
+    const query = 'Brasília';
+
+    const waitForAndClick = (selector: string, stage: VideoCaptureStage, timeoutMs = 30_000, startedAt = Date.now()) => {
+      if (cancelled) return;
+      const target = document.querySelector(selector) as HTMLElement | null;
+      if (target) {
+        stageRef.current = stage;
+        target.click();
+        return;
+      }
+      if (Date.now() - startedAt >= timeoutMs) {
+        document.documentElement.dataset.citybikesVideoState = `failed-${stage}`;
+        return;
+      }
+      timer = window.setTimeout(() => waitForAndClick(selector, stage, timeoutMs, startedAt), 350);
+    };
 
     const typeQuery = (input: HTMLInputElement, index: number) => {
       if (cancelled) return;
@@ -129,8 +147,24 @@ const VideoCaptureSequence = () => {
       if (nextIndex < query.length) {
         timer = window.setTimeout(() => typeQuery(input, nextIndex), 120);
       } else {
-        stageRef.current = 'done';
+        input.blur();
+        stageRef.current = 'finding-network';
+        timer = window.setTimeout(() => waitForAndClick('[data-testid="network-result-bikebrasilia"]', 'opening-station'), 700);
       }
+    };
+
+    const waitForRouteSummary = (routeStartedAt = Date.now()) => {
+      if (cancelled) return;
+      if (document.querySelector('[data-testid="cycling-route-summary"]')) {
+        stageRef.current = 'done';
+        document.documentElement.dataset.citybikesVideoState = 'route-ready';
+        return;
+      }
+      if (Date.now() - routeStartedAt > 30_000) {
+        document.documentElement.dataset.citybikesVideoState = 'failed-route';
+        return;
+      }
+      timer = window.setTimeout(() => waitForRouteSummary(routeStartedAt), 500);
     };
 
     const startTyping = () => {
@@ -145,10 +179,60 @@ const VideoCaptureSequence = () => {
       typeQuery(input, 0);
     };
 
-    timer = window.setTimeout(startTyping, 7000);
+    timer = window.setTimeout(startTyping, 5000);
+
+    const stationTimer = window.setInterval(() => {
+      if (cancelled || stageRef.current !== 'opening-station') return;
+      const selectedNetwork = Array.from(document.querySelectorAll('h2'))
+        .some((heading) => heading.textContent?.trim() === 'BikeBrasilia');
+      if (!selectedNetwork) {
+        if (Date.now() - startedAt >= 50_000) {
+          window.clearInterval(stationTimer);
+          document.documentElement.dataset.citybikesVideoState = 'failed-network-details';
+        }
+        return;
+      }
+      const stationMarkers = Array.from(document.querySelectorAll<HTMLElement>('.leaflet-marker-icon.custom-marker'));
+      const marker = stationMarkers.find((element) => element.title.includes('Funarte')) ?? stationMarkers[0];
+      if (marker) {
+        window.clearInterval(stationTimer);
+        marker.click();
+        stageRef.current = 'planning-route';
+        const clickPlanRoute = () => {
+          if (cancelled) return;
+          const button = document.querySelector('[data-testid="plan-route-button"]') as HTMLButtonElement | null;
+          if (button) {
+            if (button.disabled || button.textContent?.toLowerCase().includes('usar localização')) {
+              if (!button.disabled) button.click();
+              if (Date.now() - startedAt > 45_000) {
+                document.documentElement.dataset.citybikesVideoState = 'failed-location';
+                return;
+              }
+              timer = window.setTimeout(clickPlanRoute, 700);
+              return;
+            }
+            button.click();
+            waitForRouteSummary();
+            return;
+          }
+          if (Date.now() - startedAt > 45_000) {
+            document.documentElement.dataset.citybikesVideoState = 'failed-route-button';
+            return;
+          }
+          timer = window.setTimeout(clickPlanRoute, 350);
+        };
+        timer = window.setTimeout(clickPlanRoute, 400);
+        return;
+      }
+      if (Date.now() - startedAt >= 50_000) {
+        window.clearInterval(stationTimer);
+        document.documentElement.dataset.citybikesVideoState = 'failed-station';
+      }
+    }, 500);
     return () => {
       cancelled = true;
       if (timer !== undefined) window.clearTimeout(timer);
+      window.clearInterval(stationTimer);
     };
   }, [location.pathname, location.search, navigate]);
 
@@ -169,13 +253,17 @@ const AppLayout = () => {
     const { setTheme } = useTheme();
     const captureMode = new URLSearchParams(location.search).get('capture');
     const storedCaptureMode = window.sessionStorage.getItem('citybikes:capture-mode');
-    const validCaptureMode = captureMode === 'map' || captureMode === 'dark-map'
+    const validCaptureMode = isScreenshotCaptureMode(captureMode)
         ? captureMode
-        : storedCaptureMode === 'video-search' ? storedCaptureMode : null;
+        : storedCaptureMode === 'video-search' ? 'video-search' : null;
 
     useEffect(() => {
         if (!validCaptureMode) return;
         setTheme(validCaptureMode === 'dark-map' ? 'dark' : 'light');
+        if (validCaptureMode === 'video-search' || validCaptureMode.startsWith('brasilia-')) {
+            localStorage.setItem('i18nextLng', 'pt');
+            void i18n.changeLanguage('pt');
+        }
         window.dispatchEvent(new CustomEvent('citybikes:capture-theme', {
             detail: { theme: validCaptureMode === 'dark-map' ? 'dark' : 'light' },
         }));
@@ -185,7 +273,7 @@ const AppLayout = () => {
     <CityBikesProvider captureMode={validCaptureMode}>
         <Layout>
             <Suspense fallback={<AppLoading />}>
-                <NetworkSearch />
+                <NetworkSearch captureQuery={validCaptureMode === 'brasilia-explore' ? 'Brasília' : ''} />
                 <AppHome />
                 <MapComponent />
             </Suspense>

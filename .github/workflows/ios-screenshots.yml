@@ -64,6 +64,7 @@ jobs:
     timeout-minutes: 15
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         device:
           - name: iPhone 17
@@ -126,7 +127,11 @@ jobs:
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
           sleep 20
+          xcrun simctl spawn "$UDID" defaults write NSGlobalDomain AppleLanguages -array pt-BR
+          xcrun simctl spawn "$UDID" defaults write NSGlobalDomain AppleLocale pt_BR
           xcrun simctl install "$UDID" "$APP_PATH"
+          xcrun simctl privacy "$UDID" grant location br.com.citybikes
+          xcrun simctl location "$UDID" set -15.793889,-47.882778
           xcrun simctl ui "$UDID" appearance light
           xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4
 
@@ -142,33 +147,36 @@ jobs:
             test "$height" = "$EXPECTED_HEIGHT"
           }
 
-          xcrun simctl launch "$UDID" br.com.citybikes
-          sleep 12
-          capture 01-explore
+          xcrun simctl launch "$UDID" br.com.citybikes --citybikes-capture=brasilia-explore
+          sleep 18
+          capture 01-explorar-brasilia
 
           xcrun simctl terminate "$UDID" br.com.citybikes 2>/dev/null || true
-          xcrun simctl launch "$UDID" br.com.citybikes --citybikes-capture=map
-          sleep 12
-          capture 02-map
+          xcrun simctl launch "$UDID" br.com.citybikes --citybikes-capture=brasilia-station
+          sleep 22
+          capture 02-estacao-bikebrasilia
 
           xcrun simctl terminate "$UDID" br.com.citybikes 2>/dev/null || true
-          xcrun simctl ui "$UDID" appearance dark
-          xcrun simctl uninstall "$UDID" br.com.citybikes 2>/dev/null || true
-          xcrun simctl install "$UDID" "$APP_PATH"
-          xcrun simctl launch "$UDID" br.com.citybikes --citybikes-capture=dark-map
-          sleep 15
-          capture 03-map-dark
+          xcrun simctl launch "$UDID" br.com.citybikes --citybikes-capture=brasilia-route
+          sleep 30
+          capture 03-rota-brasilia
 
-          explore_hash=$(shasum -a 256 "$OUTPUT_DIR/01-explore.png" | cut -d ' ' -f 1)
-          map_hash=$(shasum -a 256 "$OUTPUT_DIR/02-map.png" | cut -d ' ' -f 1)
-          dark_hash=$(shasum -a 256 "$OUTPUT_DIR/03-map-dark.png" | cut -d ' ' -f 1)
-          printf 'Screenshot hashes: explore=%s map=%s dark-map=%s\n' "$explore_hash" "$map_hash" "$dark_hash"
-          test "$explore_hash" != "$map_hash"
-          test "$map_hash" != "$dark_hash"
+          swift scripts/validate-ios-screenshot.swift "$OUTPUT_DIR/01-explorar-brasilia.png" "Brasília" "BikeBrasilia" "Bicicletas"
+          swift scripts/validate-ios-screenshot.swift "$OUTPUT_DIR/02-estacao-bikebrasilia.png" "BikeBrasilia" "Funarte" "Bicicletas" "Vagas"
+          swift scripts/validate-ios-screenshot.swift "$OUTPUT_DIR/03-rota-brasilia.png" "Rota ciclável" "Funarte" "km" "min"
+
+          explore_hash=$(shasum -a 256 "$OUTPUT_DIR/01-explorar-brasilia.png" | cut -d ' ' -f 1)
+          station_hash=$(shasum -a 256 "$OUTPUT_DIR/02-estacao-bikebrasilia.png" | cut -d ' ' -f 1)
+          route_hash=$(shasum -a 256 "$OUTPUT_DIR/03-rota-brasilia.png" | cut -d ' ' -f 1)
+          printf 'Screenshot hashes: explorar=%s estação=%s rota=%s\n' "$explore_hash" "$station_hash" "$route_hash"
+          test "$explore_hash" != "$station_hash"
+          test "$explore_hash" != "$route_hash"
+          test "$station_hash" != "$route_hash"
           ls -lh "$OUTPUT_DIR"
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: citybikes-store-screenshots-${{ matrix.device.slug }}
           path: ${{ runner.temp }}/citybikes-${{ matrix.device.slug }}/*.png
-          if-no-files-found: error
+          if-no-files-found: warn

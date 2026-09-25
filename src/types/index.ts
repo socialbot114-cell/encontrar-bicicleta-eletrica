@@ -23,7 +23,7 @@ export interface Station {
     empty_slots: number | null;
     extra?: {
         uid?: string;
-        last_updated?: number;
+        last_updated?: number | string;
         payment?: string[];
         renting?: number;
         returning?: number;
