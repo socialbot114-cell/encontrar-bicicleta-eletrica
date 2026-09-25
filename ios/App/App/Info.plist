@@ -6,6 +6,17 @@
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>Encontrar Bicicleta Elétrica</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>br.com.citybikes.capture</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>citybikes</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
