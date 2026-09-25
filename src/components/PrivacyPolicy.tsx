@@ -51,8 +51,8 @@ export const PrivacyPolicy = () => {
                                 <div className="text-slate-500">Weather and air quality forecasts. The map-centre coordinates are sent whenever the map is panned, and only when Smart Data display is enabled.</div>
                             </div>
                             <div className="bg-white dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-                                <div className="font-bold text-slate-800 dark:text-white">OSRM (router.project-osrm.org)</div>
-                                <div className="text-slate-500">Cycling routing from your current location to a selected station. The user triggers this explicitly by tapping a Get Directions action.</div>
+                                <div className="font-bold text-slate-800 dark:text-white">OpenStreetMap Routing Service (routing.openstreetmap.de)</div>
+                                <div className="text-slate-500">A bicycle route is requested only when you choose Plan route for a station. Your current coordinates and the selected station coordinates are sent to calculate and display the route inside the app.</div>
                             </div>
                             <div className="bg-white dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
                                 <div className="font-bold text-slate-800 dark:text-white">Open Charge Map (api.openchargemap.io)</div>
@@ -67,6 +67,7 @@ export const PrivacyPolicy = () => {
                                 <div className="text-slate-500">Recent global earthquake data. Requests are sent without location coordinates.</div>
                             </div>
                         </div>
+                        <p className="mt-4">If you choose to share a station, its name, reported bike and dock counts, and map link are passed to the iOS or Android system share sheet. The app does not send shared station details to its own server.</p>
                         <p className="mt-4">These providers may log requests subject to their own privacy policies. We do not control their data practices. We rely exclusively on their public, free-of-charge facilities.</p>
                     </section>
 

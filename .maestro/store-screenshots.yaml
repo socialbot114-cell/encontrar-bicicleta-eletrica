@@ -3,19 +3,14 @@ appId: br.com.citybikes
 ---
 - extendedWaitUntil:
     visible:
-      text: "^(Explore Map|Explorar Mapa)$"
+      text: "^(Find your next ride|Encontre sua próxima viagem|Encuentra tu próximo viaje|Trouvez votre prochain trajet)$"
     timeout: 45000
-- takeScreenshot: 01-landing
+- takeScreenshot: 01-explore
 
-- tapOn:
-    text: "^(Explore Map|Explorar Mapa)$"
-    enabled: true
 - extendedWaitUntil:
     visible:
-      text: "Find near me"
+      id: network-search
     timeout: 60000
-- assertNotVisible:
-    text: "^(Explore Map|Explorar Mapa)$"
 - takeScreenshot: 02-map
 
 - tapOn:

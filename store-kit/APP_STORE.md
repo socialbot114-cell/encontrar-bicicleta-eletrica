@@ -1,17 +1,19 @@
 # Kit de Submissão — App Store Connect
 
-App: **Encontrar Bicicleta Elétrica**
+App Store Connect: **Encontrar Bicicleta Eletrica**
 
-Use este arquivo para preencher o App Store Connect. Os screenshots prontos estão em `store-kit/screenshots/`.
+Use este arquivo para preencher o App Store Connect. As imagens atualmente em `store-kit/screenshots/` são da captura aprovada anterior; gere e revise a nova captura nativa antes de substituir os arquivos para a resposta à Guideline 4.2.
 
 ## Informações do App
 
-- Nome: `Encontrar Bicicleta Elétrica`
-- Subtítulo: `Bikes compartilhadas perto de você`
+- Nome no App Store Connect: `Encontrar Bicicleta Eletrica`
+- Nome de exibição no iOS: `Encontrar Bicicleta Elétrica`
+- Subtítulo atual no App Store Connect: (vazio)
 - Categoria principal: `Navigation`
 - Categoria secundária: `Travel`
 - Preço: `Gratuito`
 - Bundle ID: `br.com.citybikes`
+- SKU: `br.comcitybikes`
 - Apple ID: `6810899424`
 - Copyright: `2026 <CONFERIR titular>`
 
@@ -32,7 +34,8 @@ Recursos:
 - Busca por cidade ou rede.
 - Filtros por estação e favoritas.
 - Modos claro e escuro.
-- Rotas para a estação.
+- Prévia de rota ciclável no próprio mapa, da sua localização até a estação.
+- Compartilhamento de estações pela folha nativa de compartilhamento do dispositivo.
 
 Funciona com dados públicos de CityBikes e OpenStreetMap. Requer conexão para atualizar disponibilidade e mapas.
 
@@ -42,8 +45,9 @@ bicicleta,bike,compartilhada,citybikes,mapa,estacao,eletrica,mobilidade
 
 ## Novidades desta versão
 
-- Correção de binário inválido (armv7 → arm64).
-- Build auto-incrementado para TestFlight.
+- O app abre diretamente no mapa de redes e estações.
+- Rotas cicláveis são pré-visualizadas no próprio mapa.
+- Compartilhamento de estações pela folha nativa do dispositivo.
 
 ## URLs
 
@@ -70,13 +74,13 @@ O Encontrar Bicicleta Elétrica é um aplicativo de navegação totalmente funci
 
 Para testar:
 
-1. Abra o app (tela inicial com hero).
-2. Toque em "Explorar Mapa" para abrir o mapa.
-3. Use a busca para encontrar uma cidade ou rede.
-4. Toque em um pin para ver disponibilidade.
-5. Alterne para modo escuro no topo.
+1. Abra o app: o mapa de redes e a busca ficam disponíveis imediatamente.
+2. Use a busca para encontrar uma cidade ou rede e toque em um pin.
+3. Toque em "Use location" / "Usar localização" para autorizar localização, se desejar.
+4. Em uma estação, confira a disponibilidade atual, toque em "Plan route" para ver a rota no mapa ou use o botão de compartilhar.
+5. Alterne o tema claro/escuro pela navegação inferior.
 
-Não é necessário criar conta, conceder permissões obrigatórias ou conectar-se à internet além dos mapas. Não há compras, anúncios ou rastreamento.
+Não é necessário criar conta. A localização é opcional; conexão com a internet é necessária para carregar mapas, disponibilidade e rotas. Não há compras, anúncios ou rastreamento.
 
 Obrigado.
 
@@ -84,16 +88,11 @@ Obrigado.
 
 Pasta: `store-kit/screenshots/`
 
-- `iphone/` — 3 imagens 1206×2622 (captura nativa do iPhone 17 no runtime iOS 26.5)
-  - `01-landing.png` — Landing (hero)
-  - `02-map.png` — Mapa claro
-  - `03-map-dark.png` — Mapa escuro
-- `ipad/` — 3 imagens 2048×2732 (slot 12,9")
-  - `01-landing.png`
-  - `02-map.png`
-  - `03-map-dark.png`
+- Os PNGs atualmente no diretório são históricos: `01-landing.png`, `02-map.png` e `03-map-dark.png`.
+- O iPad histórico é o Air 13-inch (M4), 2048×2732. Ele não corresponde ao Air 11-inch (M3) usado na revisão.
+- A nova execução do workflow deve gerar `01-explore.png`, `02-map.png` e `03-map-dark.png` para iPhone 17 (1206×2622) e iPad Air 11-inch (M3) (1640×2360).
 
-**Ordem recomendada App Store:** landing → mapa claro → mapa escuro. As capturas são **reais de iPhone/iPad via simctl** (GitHub Actions, iOS 26.5, iPhone 17 / iPad Air 13" M4), capturadas em `CityBikes iOS Screenshots` workflow (run 35676433885). Não são mockups.
+**Ordem recomendada App Store:** explorar → mapa claro → mapa escuro. Não substitua os PNGs históricos até revisar a nova execução nativa no workflow `CityBikes iOS Screenshots`.
 
 ## Prints Android reais
 
@@ -110,11 +109,13 @@ python3 -c "import plistlib; plistlib.load(open('ios/App/App/Info.plist','rb'));
 
 ## Estado da revisão anterior
 
-- **iOS 1.0 Binário inválido** — corrigido (armv7 → arm64, build 3 → auto-incrementado). Novo build enviado via `iOS TestFlight` workflow, status `UPLOAD SUCCEEDED`.
+- **iOS 1.0 (8), Guideline 4.2** — rejeitado em 23/09/2026 no iPad Air 11-inch (M3), por experiência percebida como web app sem funcionalidades iOS suficientes. A atualização abre diretamente no mapa, mantém a prévia de rota ciclável dentro do app e adiciona compartilhamento nativo.
+- O último upload TestFlight foi `1.0.1 (8)`. Para esta resposta à rejeição, a versão escolhida é `1.0`; o próximo workflow TestFlight deve gerar build `9`.
 
 ## Build atual
 
-- Marketing version: `1.0.1`
+- Marketing version: `1.0`
 - Build: `${{ github.run_number }}` (auto)
 - Bundle: `br.com.citybikes`
+- SKU: `br.comcitybikes`
 - SDK: iOS 26

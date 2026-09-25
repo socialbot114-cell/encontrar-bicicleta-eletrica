@@ -1,17 +1,19 @@
 import { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, ZoomControl } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { Share } from '@capacitor/share';
 import { useTranslation } from 'react-i18next';
 import { useCityBikes } from '../../context/CityBikesContext';
 import { SmartLayers } from './SmartLayers';
 import { bikeIcon } from './CustomMarkers';
-import { Cloud, Zap, AlertTriangle, Droplet, Star, LocateFixed, Navigation, LayoutDashboard, X, BatteryCharging } from 'lucide-react';
+import { Cloud, Zap, AlertTriangle, Droplet, Star, LocateFixed, Navigation, LayoutDashboard, X, BatteryCharging, Share2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SmartDashboard } from '../Dashboard/SmartDashboard';
 import { trackEvent } from '../../lib/analytics';
-import { buildCyclingDirectionsUrl, formatFreshness } from '../../lib/navigation';
+import { fetchCyclingRoute, type CyclingRoute } from '../../api/cyclingRouting';
+import { formatFreshness } from '../../lib/navigation';
 
 // Fix Leaflet default icon logic for Vite/Webpack
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -67,7 +69,7 @@ const MapComponent = () => {
     const {
         networks, networksError, networksUpdatedAt, refreshNetworks, selectedNetwork, selectedNetworkError,
         selectedNetworkUpdatedAt, refreshSelectedNetwork, selectNetwork, userLocation, clearSelection,
-        weather, airQuality, smartLayers, toggleSmartLayer, favorites,
+        locationStatus, weather, airQuality, smartLayers, toggleSmartLayer, favorites,
         toggleFavoriteNetwork, toggleFavoriteStation, requestLocation, smartDataEnabled,
         toggleSmartData, smartDataError, smartDataUpdatedAt,
     } = useCityBikes();
@@ -75,7 +77,12 @@ const MapComponent = () => {
     const [mapRef, setMapRef] = useState<L.Map | null>(null);
     const [showDashboard, setShowDashboard] = useState(false);
     const [onlyEbikes, setOnlyEbikes] = useState(false);
+    const [activeRoute, setActiveRoute] = useState<{ route: CyclingRoute; stationName: string } | null>(null);
+    const [routeLoadingStationId, setRouteLoadingStationId] = useState<string | null>(null);
+    const [routeError, setRouteError] = useState<string | null>(null);
+    const [shareFeedback, setShareFeedback] = useState<string | null>(null);
     const didInitialViewRef = useRef(false);
+    const routeRequestIdRef = useRef(0);
 
     // Initial world view (shown before any location is available)
     useEffect(() => {
@@ -103,11 +110,85 @@ const MapComponent = () => {
         }
     }, [mapRef, selectedNetwork]);
 
+    useEffect(() => {
+        if (mapRef && activeRoute) {
+            mapRef.fitBounds(activeRoute.route.coordinates, {
+                paddingTopLeft: [36, 112],
+                paddingBottomRight: [36, 140],
+                maxZoom: 16,
+                animate: true,
+            });
+        }
+    }, [mapRef, activeRoute]);
+
+    useEffect(() => {
+        routeRequestIdRef.current += 1;
+        setActiveRoute(null);
+        setRouteLoadingStationId(null);
+        setRouteError(null);
+    }, [selectedNetwork?.id]);
+
     const handleLocateMe = () => {
         if (userLocation && mapRef) {
             mapRef.setView([userLocation.latitude, userLocation.longitude], 13, { animate: true });
         } else {
             requestLocation();
+        }
+    };
+
+    const handlePlanRoute = async (station: { id: string; name: string; latitude: number; longitude: number }) => {
+        if (!userLocation) {
+            void requestLocation();
+            return;
+        }
+
+        setRouteError(null);
+        setActiveRoute(null);
+        const requestId = ++routeRequestIdRef.current;
+        setRouteLoadingStationId(station.id);
+        try {
+            const route = await fetchCyclingRoute(userLocation, station);
+            if (requestId !== routeRequestIdRef.current) return;
+            setActiveRoute({ route, stationName: station.name });
+            mapRef?.closePopup();
+            trackEvent('CYCLING_ROUTE_PLANNED');
+        } catch (error) {
+            if (requestId !== routeRequestIdRef.current) return;
+            setRouteError(error instanceof Error ? error.message : 'Could not plan this cycling route.');
+        } finally {
+            if (requestId === routeRequestIdRef.current) setRouteLoadingStationId(null);
+        }
+    };
+
+    const clearCyclingRoute = () => {
+        routeRequestIdRef.current += 1;
+        setActiveRoute(null);
+        setRouteLoadingStationId(null);
+        setRouteError(null);
+    };
+
+    const handleShareStation = async (station: { name: string; latitude: number; longitude: number; free_bikes: number; empty_slots: number | null }) => {
+        const mapUrl = `https://www.openstreetmap.org/?mlat=${station.latitude}&mlon=${station.longitude}#map=18/${station.latitude}/${station.longitude}`;
+        const text = `${station.name} — ${selectedNetwork?.location.city ?? ''}. ${station.free_bikes} bikes available; ${station.empty_slots ?? 'availability not reported'} empty docks.`;
+
+        try {
+            const { value } = await Share.canShare();
+            let feedback = 'Station details shared.';
+            if (value) {
+                await Share.share({ title: station.name, text, url: mapUrl, dialogTitle: 'Share bike station' });
+            } else if (navigator.clipboard) {
+                await navigator.clipboard.writeText(`${text}\n${mapUrl}`);
+                feedback = 'Station details copied.';
+            } else {
+                throw new Error('Sharing is not available on this device.');
+            }
+            trackEvent('BIKE_STATION_SHARED');
+            setShareFeedback(feedback);
+            window.setTimeout(() => setShareFeedback(null), 2500);
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') return;
+            setShareFeedback(error instanceof Error ? error.message : 'Could not share this station.');
+            window.setTimeout(() => setShareFeedback(null), 3500);
         }
     };
 
@@ -122,7 +203,7 @@ const MapComponent = () => {
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        className="map-context-overlay fixed bottom-[calc(76px+env(safe-area-inset-bottom))] md:absolute md:top-6 md:bottom-auto left-0 md:left-6 right-0 md:right-auto z-[1000] flex flex-col gap-3 px-3 md:px-0 max-w-none md:max-w-sm pointer-events-none max-h-[42dvh] overflow-y-auto"
+                        className="map-context-overlay fixed bottom-[calc(76px+env(safe-area-inset-bottom))] md:absolute md:top-[calc(5.5rem+env(safe-area-inset-top))] md:bottom-auto left-0 md:left-6 right-0 md:right-auto z-[1000] flex flex-col gap-3 px-3 md:px-0 max-w-none md:max-w-sm pointer-events-none max-h-[42dvh] overflow-y-auto"
                     >
                         {/* Selected Network Info */}
                         {selectedNetwork && (
@@ -160,29 +241,55 @@ const MapComponent = () => {
                                         </button>
                                     </div>
                                 </div>
-                                 <div className="grid grid-cols-2 gap-2 text-center">
-                                    <div className="p-2 bg-green-500/5 border border-green-500/10 rounded-xl">
-                                        <div className="text-[10px] text-green-600 dark:text-green-400 font-bold uppercase">{t('bikes')}</div>
+                                {routeLoadingStationId && (
+                                    <div className="mb-3 flex items-center gap-2 rounded-xl bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300" role="status">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Planning a cycling route…
+                                    </div>
+                                )}
+                                {routeError && (
+                                    <div className="mb-3 flex items-start justify-between gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-700 dark:text-red-200" role="alert">
+                                        <span>{routeError}</span>
+                                        <button type="button" className="shrink-0 p-1" aria-label="Dismiss route error" onClick={() => setRouteError(null)}><X className="h-4 w-4" /></button>
+                                    </div>
+                                )}
+                                {activeRoute && (
+                                    <div className="mb-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3" aria-label="Cycling route summary">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Cycling route</div>
+                                                <div className="mt-1 truncate text-sm font-extrabold text-slate-800 dark:text-white">To {activeRoute.stationName}</div>
+                                            </div>
+                                            <button type="button" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl hover:bg-emerald-500/10" aria-label="Clear cycling route" onClick={clearCyclingRoute}><X className="h-4 w-4" /></button>
+                                        </div>
+                                        <div className="mt-2 flex items-baseline gap-3 text-sm font-black text-slate-800 dark:text-white">
+                                            <span>{(activeRoute.route.distanceMeters / 1000).toFixed(1)} km</span>
+                                            <span>{Math.max(1, Math.round(activeRoute.route.durationSeconds / 60))} min</span>
+                                        </div>
+                                        <p className="mt-1 text-[10px] leading-snug text-slate-500 dark:text-slate-400">Route preview by OpenStreetMap. Follow local road signs and safety rules.</p>
+                                    </div>
+                                )}
+                                <div className="grid grid-cols-2 gap-2 text-center">
+                                    <div className="rounded-xl border border-green-500/10 bg-green-500/5 p-2">
+                                        <div className="text-[10px] font-bold uppercase text-green-600 dark:text-green-400">{t('bikes')}</div>
                                         <div className="text-lg font-black dark:text-white">{selectedNetwork.stations.reduce((acc, s) => acc + s.free_bikes, 0)}</div>
-                                 </div>
-                                      <div className="p-2 bg-teal-500/5 border border-teal-500/10 rounded-xl">
-                                         <div className="text-[10px] text-teal-600 dark:text-teal-400 font-bold uppercase">{t('slots')}</div>
-                                        <div className="text-lg font-black dark:text-white">
-                                            {selectedNetwork.stations.reduce((acc, s) => acc + (s.empty_slots || 0), 0)}
-                                 </div>
-                                 {selectedNetwork.stations.some((station) => station.extra?.has_ebikes || (station.extra?.ebikes ?? 0) > 0) && (
-                                     <button
-                                         type="button"
-                                         aria-pressed={onlyEbikes}
-                                         onClick={() => setOnlyEbikes((value) => !value)}
-                                         className={`mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${onlyEbikes ? 'bg-emerald-600 text-white' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'}`}
-                                     >
-                                         <BatteryCharging className="h-4 w-4" />
-                                         {onlyEbikes ? 'Showing e-bikes' : 'Show e-bike stations'}
-                                     </button>
-                                 )}
-                             </div>
+                                    </div>
+                                    <div className="rounded-xl border border-teal-500/10 bg-teal-500/5 p-2">
+                                        <div className="text-[10px] font-bold uppercase text-teal-600 dark:text-teal-400">{t('slots')}</div>
+                                        <div className="text-lg font-black dark:text-white">{selectedNetwork.stations.reduce((acc, s) => acc + (s.empty_slots || 0), 0)}</div>
+                                    </div>
                                 </div>
+                                {selectedNetwork.stations.some((station) => station.extra?.has_ebikes || (station.extra?.ebikes ?? 0) > 0) && (
+                                    <button
+                                        type="button"
+                                        aria-pressed={onlyEbikes}
+                                        onClick={() => setOnlyEbikes((value) => !value)}
+                                        className={`mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${onlyEbikes ? 'bg-emerald-600 text-white' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'}`}
+                                    >
+                                        <BatteryCharging className="h-4 w-4" />
+                                        {onlyEbikes ? 'Showing e-bikes' : 'Show e-bike stations'}
+                                    </button>
+                                )}
                             </div>
                         )}
 
@@ -350,6 +457,13 @@ const MapComponent = () => {
                 <MapEventListener />
                 <SmartLayers />
 
+                {activeRoute && (
+                    <Polyline
+                        positions={activeRoute.route.coordinates}
+                        pathOptions={{ color: '#059669', weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }}
+                    />
+                )}
+
                 {/* User Location Marker */}
                 {userLocation && (
                     <Marker
@@ -467,22 +581,40 @@ const MapComponent = () => {
                                             Station {formatFreshness(new Date(station.timestamp).getTime())}
                                         </p>
 
-                                        {userLocation && (
-                                            <>
-                                            <a
-                                                href={buildCyclingDirectionsUrl(userLocation, station.latitude, station.longitude)}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                onClick={() => trackEvent('CYCLING_NAVIGATION_OPENED')}
-                                                aria-label={`Open cycling directions to ${station.name} in Google Maps`}
-                                                className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20"
+                                        <div className="grid grid-cols-[1fr_auto] gap-2">
+                                            <button
+                                                type="button"
+                                                disabled={routeLoadingStationId === station.id || locationStatus === 'requesting'}
+                                                onClick={() => void handlePlanRoute(station)}
+                                                aria-label={`Plan an in-app cycling route to ${station.name}`}
+                                                className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                                             >
-                                                <Navigation className="w-3.5 h-3.5" />
-                                                Open cycling directions
-                                            </a>
-                                            <p className="mt-2 text-[9px] leading-snug text-slate-500">Opens Google Maps in cycling mode. Check route conditions and local safety guidance.</p>
-                                            </>
+                                                {routeLoadingStationId === station.id || locationStatus === 'requesting'
+                                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                                    : <Navigation className="h-4 w-4" />}
+                                                {userLocation
+                                                    ? activeRoute?.stationName === station.name ? 'Route shown' : 'Plan route'
+                                                    : 'Use location'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleShareStation(station)}
+                                                aria-label={`Share ${station.name}`}
+                                                className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/10"
+                                            >
+                                                <Share2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                        {!userLocation && (
+                                            <p className="mt-2 text-[9px] leading-snug text-slate-500">
+                                                {locationStatus === 'denied'
+                                                    ? 'Location is off. Allow access in Settings to plan a route.'
+                                                    : locationStatus === 'requesting'
+                                                        ? 'Finding your location…'
+                                                        : 'Use your location to preview a cycling route inside the app.'}
+                                            </p>
                                         )}
+                                        {shareFeedback && <p role="status" className="mt-2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-300">{shareFeedback}</p>}
                                     </div>
                                 </Popup>
                             </Marker>

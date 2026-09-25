@@ -129,7 +129,7 @@ O mapa e as telas mais pesadas sao carregados com `lazy`/`Suspense` em
 - Localizacao do usuario e estado de permissao.
 - Favoritos persistidos em `localStorage` na chave
   `citybikes_favorites`.
-- Rota atual usando OSRM.
+- Prévia de rota ciclável exibida no mapa e calculada pelo serviço público de rotas do OpenStreetMap.
 - Dados e toggles das camadas smart city.
 
 `src/context/ThemeContext.tsx` controla tema claro/escuro, persiste a escolha
@@ -168,12 +168,13 @@ para `SmartCityError`.
 
 ### Rotas
 
-O trajeto de bicicleta usa OSRM diretamente em
-`src/context/CityBikesContext.tsx`.
+O trajeto de bicicleta é solicitado pelo usuário no cartão da estação e exibido
+no próprio mapa. A integração está em `src/api/cyclingRouting.ts`.
 
-- Endpoint: `https://router.project-osrm.org/route/v1/cycling/...`
-- Timeout/cancelamento: 15 segundos.
-- A rota e removida quando uma nova solicitacao comeca ou a selecao muda.
+- Endpoint: `https://routing.openstreetmap.de/routed-bike/route/v1/driving/...`
+- Timeout: 15 segundos.
+- A resposta GeoJSON é validada e convertida para coordenadas do Leaflet.
+- O app solicita localização quando o usuário escolhe `Use location` e não a possui.
 
 Ao adicionar uma API nova, manter timeout, validacao de resposta e uma classe
 de erro tipada. Nunca colocar segredo ou chave privada diretamente no Git.

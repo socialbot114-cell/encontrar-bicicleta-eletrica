@@ -71,11 +71,11 @@ jobs:
             runtime: iOS-26-5
             width: 1206
             height: 2622
-          - name: iPad Air 13-inch (M4)
+          - name: iPad Air 11-inch (M3)
             slug: ipad
             runtime: iOS-26-5
-            width: 2048
-            height: 2732
+            width: 1640
+            height: 2360
 
     steps:
       - uses: actions/checkout@v4
@@ -119,10 +119,10 @@ jobs:
 
           xcrun simctl shutdown "$UDID" 2>/dev/null || true
           xcrun simctl erase "$UDID"
-           xcrun simctl boot "$UDID"
-           xcrun simctl bootstatus "$UDID" -b
-           sleep 20
-           xcrun simctl install "$UDID" "$APP_PATH"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          sleep 20
+          xcrun simctl install "$UDID" "$APP_PATH"
           xcrun simctl ui "$UDID" appearance light
           xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4
 
@@ -140,27 +140,27 @@ jobs:
 
           xcrun simctl launch "$UDID" br.com.citybikes
           sleep 12
-          capture 01-landing
+          capture 01-explore
 
           xcrun simctl terminate "$UDID" br.com.citybikes 2>/dev/null || true
           xcrun simctl launch "$UDID" br.com.citybikes --citybikes-capture=map
           sleep 12
           capture 02-map
 
-           xcrun simctl terminate "$UDID" br.com.citybikes 2>/dev/null || true
-           xcrun simctl ui "$UDID" appearance dark
-           xcrun simctl uninstall "$UDID" br.com.citybikes 2>/dev/null || true
-           xcrun simctl install "$UDID" "$APP_PATH"
-           xcrun simctl launch "$UDID" br.com.citybikes --citybikes-capture=dark-map
-           sleep 15
-           capture 03-map-dark
+          xcrun simctl terminate "$UDID" br.com.citybikes 2>/dev/null || true
+          xcrun simctl ui "$UDID" appearance dark
+          xcrun simctl uninstall "$UDID" br.com.citybikes 2>/dev/null || true
+          xcrun simctl install "$UDID" "$APP_PATH"
+          xcrun simctl launch "$UDID" br.com.citybikes --citybikes-capture=dark-map
+          sleep 15
+          capture 03-map-dark
 
-           landing_hash=$(shasum -a 256 "$OUTPUT_DIR/01-landing.png" | cut -d ' ' -f 1)
-           map_hash=$(shasum -a 256 "$OUTPUT_DIR/02-map.png" | cut -d ' ' -f 1)
-           dark_hash=$(shasum -a 256 "$OUTPUT_DIR/03-map-dark.png" | cut -d ' ' -f 1)
-           printf 'Screenshot hashes: landing=%s map=%s dark-map=%s\n' "$landing_hash" "$map_hash" "$dark_hash"
-           test "$landing_hash" != "$map_hash"
-           test "$map_hash" != "$dark_hash"
+          explore_hash=$(shasum -a 256 "$OUTPUT_DIR/01-explore.png" | cut -d ' ' -f 1)
+          map_hash=$(shasum -a 256 "$OUTPUT_DIR/02-map.png" | cut -d ' ' -f 1)
+          dark_hash=$(shasum -a 256 "$OUTPUT_DIR/03-map-dark.png" | cut -d ' ' -f 1)
+          printf 'Screenshot hashes: explore=%s map=%s dark-map=%s\n' "$explore_hash" "$map_hash" "$dark_hash"
+          test "$explore_hash" != "$map_hash"
+          test "$map_hash" != "$dark_hash"
           ls -lh "$OUTPUT_DIR"
 
       - uses: actions/upload-artifact@v4

@@ -11,7 +11,8 @@ Transition from a "Bike Network Viewer" to an "Urban Mobility Companion".
 ## 2. Active Mobility (The "User" Focus)
 - [x] **"Near Me" Geolocation**: Button to snap map to user position.
 - [x] **Favorites & Personalization**: Ability to "star" stations or networks (stored in LocalStorage).
-- [x] **Cycling Routing**: Integrate OSRM (Open Source Routing Machine) to show routes to selected stations.
+- [x] **Cycling Routing**: Preview bicycle routes to selected stations inside the app using the public OpenStreetMap routing service.
+- [x] **Native Sharing**: Share a selected bike station and its latest reported availability using the system share sheet.
 - [ ] **Real-time Availability Alerts**: Notify if a favorite station goes below 2 bikes.
 - [ ] **Near Me Geolocation**: Auto-select the nearest network on app start.
 

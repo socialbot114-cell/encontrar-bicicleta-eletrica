@@ -1,19 +1,55 @@
 import { describe, expect, it } from 'vitest';
-import { buildCyclingDirectionsUrl, formatFreshness } from './navigation';
+import { vi } from 'vitest';
+import { fetchCyclingRoute } from '../api/cyclingRouting';
+import { formatFreshness } from './navigation';
 
-describe('cycling navigation', () => {
-    it('creates an HTTPS cycling handoff without an OSRM route', () => {
-        const url = new URL(buildCyclingDirectionsUrl(
-            { latitude: 51.5, longitude: -0.12, city: '', country: '' },
-            51.51,
-            -0.1,
-        ));
+describe('in-app cycling routes', () => {
+    it('requests a bicycle route and converts GeoJSON coordinates for the map', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                code: 'Ok',
+                routes: [{
+                    distance: 1180.8,
+                    duration: 316.9,
+                    geometry: { coordinates: [[-122.4194, 37.7749], [-122.41, 37.78]] },
+                }],
+            }),
+        });
+        vi.stubGlobal('fetch', fetchMock);
 
-        expect(url.protocol).toBe('https:');
-        expect(url.hostname).toBe('www.google.com');
-        expect(url.searchParams.get('travelmode')).toBe('bicycling');
-        expect(url.searchParams.get('origin')).toBe('51.5,-0.12');
-        expect(url.href).not.toContain('osrm');
+        try {
+            const route = await fetchCyclingRoute(
+                { latitude: 37.7749, longitude: -122.4194, city: '', country: '' },
+                { latitude: 37.78, longitude: -122.41 },
+            );
+            const url = new URL(fetchMock.mock.calls[0][0] as string);
+
+            expect(url.hostname).toBe('routing.openstreetmap.de');
+            expect(url.pathname).toContain('/routed-bike/route/v1/driving/-122.4194,37.7749;-122.41,37.78');
+            expect(url.searchParams.get('geometries')).toBe('geojson');
+            expect(route.coordinates).toEqual([[37.7749, -122.4194], [37.78, -122.41]]);
+            expect(route.distanceMeters).toBe(1180.8);
+            expect(route.durationSeconds).toBe(316.9);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it('reports unavailable route responses clearly', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ code: 'NoRoute', routes: [] }),
+        }));
+
+        try {
+            await expect(fetchCyclingRoute(
+                { latitude: 37.7749, longitude: -122.4194, city: '', country: '' },
+                { latitude: 37.78, longitude: -122.41 },
+            )).rejects.toThrow('No cycling route was found');
+        } finally {
+            vi.unstubAllGlobals();
+        }
     });
 });
 

@@ -2,9 +2,11 @@ import { Link } from 'react-router-dom';
 import { Compass, Star, ShieldCheck } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { useTranslation } from 'react-i18next';
+import { useCityBikes } from '../context/CityBikesContext';
 
 export const MobileBottomNav = () => {
     const { t } = useTranslation();
+    const { clearSelection } = useCityBikes();
 
     return (
         <nav aria-label="Mobile navigation" className="mobile-bottom-nav md:hidden">
@@ -16,7 +18,7 @@ export const MobileBottomNav = () => {
                 <ThemeToggle />
                 <span>{t('nav_theme', 'Theme')}</span>
             </div>
-            <Link to="/app#favorites" className="mobile-nav-item">
+            <Link to="/app#favorites" onClick={clearSelection} className="mobile-nav-item">
                 <Star aria-hidden="true" className="h-5 w-5" />
                 <span>{t('nav_favorites', 'Favorites')}</span>
             </Link>

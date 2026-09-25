@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { App as CapacitorApp } from '@capacitor/app';
 import { CityBikesProvider } from './context/CityBikesContext';
@@ -95,7 +96,8 @@ const VideoCaptureSequence = () => {
     const queryCapture = new URLSearchParams(location.search).get('capture') === 'video-search';
     if (queryCapture) {
       window.sessionStorage.setItem('citybikes:capture-mode', 'video-search');
-      navigate('/', { replace: true });
+      if (Capacitor.isNativePlatform()) stageRef.current = 'landing';
+      navigate(Capacitor.isNativePlatform() ? '/app' : '/', { replace: true });
       return;
     }
 
@@ -103,6 +105,10 @@ const VideoCaptureSequence = () => {
 
     if (location.pathname === '/' && stageRef.current === 'idle') {
       stageRef.current = 'landing';
+      if (Capacitor.isNativePlatform()) {
+        navigate('/app', { replace: true });
+        return;
+      }
       const timer = window.setTimeout(() => navigate('/app'), 6000);
       return () => window.clearTimeout(timer);
     }
@@ -199,7 +205,7 @@ function App() {
             <VideoCaptureSequence />
             <Suspense fallback={<AppLoading />}>
                 <Routes>
-                    <Route path="/" element={<LandingPage />} />
+                    <Route path="/" element={Capacitor.isNativePlatform() ? <Navigate to="/app" replace /> : <LandingPage />} />
                     <Route path="/app" element={<AppLayout />} />
                     <Route path="/privacy" element={<PrivacyPolicy />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
