@@ -73,7 +73,7 @@ jobs:
             height: 2622
           - name: iPad Air 11-inch (M3)
             slug: ipad
-            runtime: iOS-26-5
+            runtime: iOS-26-2
             width: 1640
             height: 2360
 
