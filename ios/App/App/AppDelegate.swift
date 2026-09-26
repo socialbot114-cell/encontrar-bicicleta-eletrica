@@ -8,6 +8,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.dispatchCaptureModeIfRequested()
+        }
         return true
     }
 
@@ -70,14 +73,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         let script = """
         if (document.documentElement.dataset.citybikesCaptureReady !== 'true') {
-            false;
+            'waiting';
         } else {
             window.dispatchEvent(new CustomEvent('citybikes:native-capture', { detail: { mode: '\(mode)' } }));
-            true;
+            'dispatched';
         }
         """
         webView.evaluateJavaScript(script) { result, error in
-            if error != nil || (result as? Bool) != true {
+            if error != nil || (result as? String) != "dispatched" {
                 self.retryCaptureMode(attempt: attempt)
             }
         }
