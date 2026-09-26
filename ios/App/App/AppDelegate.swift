@@ -81,7 +81,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             window.location.hash = '#\(route)';
             window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
             window.dispatchEvent(new CustomEvent('citybikes:native-capture', { detail: { mode: '\(mode)' } }));
-            'dispatched:' + window.location.hash;
+            const bodyText = (document.body?.innerText || '').replace(/\\s+/g, ' ').slice(0, 160);
+            'dispatched:' + window.location.hash + ' | '
+                + (document.documentElement.dataset.citybikesCaptureMode || 'no-handler')
+                + ' | ' + bodyText;
         }
         """
         webView.evaluateJavaScript(script) { result, error in
