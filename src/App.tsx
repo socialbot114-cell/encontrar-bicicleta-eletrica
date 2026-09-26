@@ -67,7 +67,6 @@ const DeepLinkHandler = () => {
     const handleNativeCapture = (event: Event) => {
       const mode = (event as CustomEvent<{ mode?: string }>).detail?.mode;
        if (mode === 'landing' || (mode && isScreenshotCaptureMode(mode))) {
-           document.documentElement.dataset.citybikesCaptureMode = mode;
            navigateToCapture(mode);
        }
     };
@@ -89,7 +88,6 @@ const DeepLinkHandler = () => {
       void listener?.remove();
       window.removeEventListener('citybikes:native-capture', handleNativeCapture);
       delete document.documentElement.dataset.citybikesCaptureReady;
-      delete document.documentElement.dataset.citybikesCaptureMode;
     };
   }, [navigate]);
   return null;
