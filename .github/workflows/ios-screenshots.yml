@@ -72,11 +72,6 @@ jobs:
             runtime: iOS-26-5
             width: 1206
             height: 2622
-          - name: iPad Air 11-inch (M3)
-            slug: ipad
-            runtime: iOS-26-2
-            width: 1640
-            height: 2360
 
     steps:
       - uses: actions/checkout@v4
@@ -151,8 +146,6 @@ jobs:
           xcrun simctl launch "$UDID" br.com.citybikes
           sleep 22
           capture 01-explorar-brasilia
-          xcrun simctl spawn "$UDID" defaults read br.com.citybikes CityBikesCaptureMode
-          xcrun simctl spawn "$UDID" log show --last 3m --style compact --predicate 'process == "App" AND eventMessage CONTAINS[c] "CityBikes capture"' || true
           swift scripts/validate-ios-screenshot.swift "$OUTPUT_DIR/01-explorar-brasilia.png" "Brasília" "BikeBrasilia" "Bicicletas"
 
           xcrun simctl terminate "$UDID" br.com.citybikes 2>/dev/null || true
