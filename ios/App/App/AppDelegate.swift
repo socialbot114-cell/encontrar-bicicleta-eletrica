@@ -74,10 +74,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             return
         }
 
+        let route = mode == "video-search"
+            ? "/?capture=video-search"
+            : mode == "landing" ? "/" : "/app?capture=\(mode)"
         let script = """
         if (document.documentElement.dataset.citybikesCaptureReady !== 'true') {
             'waiting';
         } else {
+            window.location.hash = '#\(route)';
             window.dispatchEvent(new CustomEvent('citybikes:native-capture', { detail: { mode: '\(mode)' } }));
             'dispatched';
         }
