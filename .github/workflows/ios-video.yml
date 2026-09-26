@@ -97,9 +97,7 @@ jobs:
           }
           trap stop_recording EXIT
 
-          xcrun simctl launch "$UDID" br.com.citybikes
-          sleep 5
-          xcrun simctl openurl "$UDID" "citybikes://capture/video-search"
+          xcrun simctl launch "$UDID" br.com.citybikes "citybikes-capture=video-search"
           sleep 75
           stop_recording
           trap - EXIT

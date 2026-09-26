@@ -147,24 +147,18 @@ jobs:
             test "$height" = "$EXPECTED_HEIGHT"
           }
 
-          xcrun simctl launch "$UDID" br.com.citybikes
-          sleep 5
-          xcrun simctl openurl "$UDID" "citybikes://capture/brasilia-explore"
-          sleep 18
+          xcrun simctl launch "$UDID" br.com.citybikes "citybikes-capture=brasilia-explore"
+          sleep 22
           capture 01-explorar-brasilia
 
           xcrun simctl terminate "$UDID" br.com.citybikes 2>/dev/null || true
-          xcrun simctl launch "$UDID" br.com.citybikes
-          sleep 5
-          xcrun simctl openurl "$UDID" "citybikes://capture/brasilia-station"
-          sleep 22
+          xcrun simctl launch "$UDID" br.com.citybikes "citybikes-capture=brasilia-station"
+          sleep 27
           capture 02-estacao-bikebrasilia
 
           xcrun simctl terminate "$UDID" br.com.citybikes 2>/dev/null || true
-          xcrun simctl launch "$UDID" br.com.citybikes
-          sleep 5
-          xcrun simctl openurl "$UDID" "citybikes://capture/brasilia-route"
-          sleep 30
+          xcrun simctl launch "$UDID" br.com.citybikes "citybikes-capture=brasilia-route"
+          sleep 35
           capture 03-rota-brasilia
 
           swift scripts/validate-ios-screenshot.swift "$OUTPUT_DIR/01-explorar-brasilia.png" "Brasília" "BikeBrasilia" "Bicicletas"

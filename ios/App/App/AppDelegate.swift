@@ -48,8 +48,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     private func dispatchCaptureModeIfRequested(attempt: Int = 0) {
         let mode = ProcessInfo.processInfo.arguments
-            .first(where: { $0.hasPrefix("--citybikes-capture=") })?
+            .first(where: {
+                $0.hasPrefix("citybikes-capture=") || $0.hasPrefix("--citybikes-capture=")
+            })?
             .replacingOccurrences(of: "--citybikes-capture=", with: "")
+            .replacingOccurrences(of: "citybikes-capture=", with: "")
         guard mode == "landing"
             || mode == "map"
             || mode == "dark-map"
