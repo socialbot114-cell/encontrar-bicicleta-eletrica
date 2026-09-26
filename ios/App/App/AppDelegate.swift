@@ -82,15 +82,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             'waiting';
         } else {
             window.location.hash = '#\(route)';
+            window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
             window.dispatchEvent(new CustomEvent('citybikes:native-capture', { detail: { mode: '\(mode)' } }));
-            'dispatched';
+            'dispatched:' + window.location.hash;
         }
         """
         webView.evaluateJavaScript(script) { result, error in
-            if attempt == 0 || error != nil || (result as? String) == "dispatched" {
+            if attempt == 0 || error != nil || (result as? String)?.hasPrefix("dispatched:") == true {
                 NSLog("CityBikes capture handshake: mode=\(mode), result=\(String(describing: result)), error=\(String(describing: error))")
             }
-            if error != nil || (result as? String) != "dispatched" {
+            if error != nil || (result as? String)?.hasPrefix("dispatched:") != true {
                 self.retryCaptureMode(attempt: attempt)
             }
         }
