@@ -147,17 +147,20 @@ jobs:
             test "$height" = "$EXPECTED_HEIGHT"
           }
 
-          xcrun simctl launch "$UDID" br.com.citybikes "citybikes-capture=brasilia-explore"
+          xcrun simctl spawn "$UDID" defaults write br.com.citybikes CityBikesCaptureMode brasilia-explore
+          xcrun simctl launch "$UDID" br.com.citybikes
           sleep 22
           capture 01-explorar-brasilia
 
           xcrun simctl terminate "$UDID" br.com.citybikes 2>/dev/null || true
-          xcrun simctl launch "$UDID" br.com.citybikes "citybikes-capture=brasilia-station"
+          xcrun simctl spawn "$UDID" defaults write br.com.citybikes CityBikesCaptureMode brasilia-station
+          xcrun simctl launch "$UDID" br.com.citybikes
           sleep 27
           capture 02-estacao-bikebrasilia
 
           xcrun simctl terminate "$UDID" br.com.citybikes 2>/dev/null || true
-          xcrun simctl launch "$UDID" br.com.citybikes "citybikes-capture=brasilia-route"
+          xcrun simctl spawn "$UDID" defaults write br.com.citybikes CityBikesCaptureMode brasilia-route
+          xcrun simctl launch "$UDID" br.com.citybikes
           sleep 35
           capture 03-rota-brasilia
 
