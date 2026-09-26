@@ -57,6 +57,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .replacingOccurrences(of: "--citybikes-capture=", with: "")
             .replacingOccurrences(of: "citybikes-capture=", with: "")
         let mode = UserDefaults.standard.string(forKey: "CityBikesCaptureMode") ?? launchArgumentMode
+        if attempt == 0 {
+            NSLog("CityBikes capture request: mode=\(mode ?? "none"), arguments=\(ProcessInfo.processInfo.arguments)")
+        }
         guard mode == "landing"
             || mode == "map"
             || mode == "dark-map"
@@ -80,6 +83,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         """
         webView.evaluateJavaScript(script) { result, error in
+            if attempt == 0 || error != nil || (result as? String) == "dispatched" {
+                NSLog("CityBikes capture handshake: mode=\(mode), result=\(String(describing: result)), error=\(String(describing: error))")
+            }
             if error != nil || (result as? String) != "dispatched" {
                 self.retryCaptureMode(attempt: attempt)
             }

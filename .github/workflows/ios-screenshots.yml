@@ -151,6 +151,9 @@ jobs:
           xcrun simctl launch "$UDID" br.com.citybikes
           sleep 22
           capture 01-explorar-brasilia
+          xcrun simctl spawn "$UDID" defaults read br.com.citybikes CityBikesCaptureMode
+          xcrun simctl spawn "$UDID" log show --last 3m --style compact --predicate 'process == "App" AND eventMessage CONTAINS[c] "CityBikes capture"' || true
+          swift scripts/validate-ios-screenshot.swift "$OUTPUT_DIR/01-explorar-brasilia.png" "Brasília" "BikeBrasilia" "Bicicletas"
 
           xcrun simctl terminate "$UDID" br.com.citybikes 2>/dev/null || true
           xcrun simctl spawn "$UDID" defaults write br.com.citybikes CityBikesCaptureMode brasilia-station
@@ -164,7 +167,6 @@ jobs:
           sleep 35
           capture 03-rota-brasilia
 
-          swift scripts/validate-ios-screenshot.swift "$OUTPUT_DIR/01-explorar-brasilia.png" "Brasília" "BikeBrasilia" "Bicicletas"
           swift scripts/validate-ios-screenshot.swift "$OUTPUT_DIR/02-estacao-bikebrasilia.png" "BikeBrasilia" "Funarte" "Bicicletas" "Vagas"
           swift scripts/validate-ios-screenshot.swift "$OUTPUT_DIR/03-rota-brasilia.png" "Rota ciclável" "Funarte" "km" "min"
 
