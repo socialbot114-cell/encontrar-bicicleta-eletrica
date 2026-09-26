@@ -276,7 +276,7 @@ const AppLayout = () => {
     }, [setTheme, validCaptureMode]);
 
     return (
-    <CityBikesProvider captureMode={validCaptureMode}>
+    <CityBikesProvider key={validCaptureMode ?? 'live'} captureMode={validCaptureMode}>
         <Layout>
             <Suspense fallback={<AppLoading />}>
                 <NetworkSearch captureQuery={validCaptureMode === 'brasilia-explore' ? 'Brasília' : ''} />
