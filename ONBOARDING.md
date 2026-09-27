@@ -1,10 +1,10 @@
 # CityBikes Premium
 
-Guia de onboarding, desenvolvimento e release para quem precisar manter,
-corrigir ou evoluir este projeto.
+Guia de onboarding, desenvolvimento e release para manter, corrigir ou evoluir
+este projeto.
 
-> Atualizado em 2026-07-31. Informacoes de versao, checksum e estado do
-> produto sao um retrato deste momento e devem ser atualizadas a cada release.
+> Atualizado em 2026-09-27. Informações de release devem ser conferidas em
+> `RELEASE.md` e `store-kit/APP_STORE.md` antes de cada publicação.
 
 ## 1. Visao Geral
 
@@ -12,15 +12,16 @@ O CityBikes Premium e uma aplicacao React/TypeScript que mostra redes e
 estacoes de bicicletas em um mapa Leaflet. O projeto tambem agrega dados de
 clima, qualidade do ar, terremotos, carregadores de veiculos eletricos e POIs.
 
-Ele e distribuido como app Android por meio do Capacitor. Isso significa:
+Ele é distribuído como aplicativo híbrido por meio do Capacitor. O repositório
+mantém projetos Android e iOS; ambos exibem a interface React dentro de uma
+WebView e usam plugins nativos quando necessário.
 
-- A interface e React executada dentro de uma WebView Android.
-- O pacote entregue ao Google Play e nativo no formato APK/AAB.
-- Recursos nativos usados hoje: geolocalizacao, splash screen e status bar.
-- Nao e um app Android 100% nativo em Kotlin. O comportamento deve ser
-  tratado como uma aplicacao hibrida com experiencia visual nativa.
+- Recursos nativos usados hoje: geolocalização, splash screen, status bar e
+  compartilhamento do sistema.
+- O código de produto é compartilhado entre web, Android e iOS; os fluxos de
+  build e metadados nativos permanecem específicos por plataforma.
 
-Repositorio: `https://github.com/socialbot114-cell/citybikes-premium`
+Repositório: `https://github.com/socialbot114-cell/encontrar-bicicleta-eletrica`
 
 Package Android: `com.citybikes`
 
@@ -31,7 +32,7 @@ Package Android: `com.citybikes`
 - React: `19.2.0`.
 - TypeScript: `5.9.x`.
 - Vite: `5.4.x`.
-- Capacitor CLI/core/Android: `7.6.8`.
+- Capacitor CLI/core/Android: `7.6.8`; iOS: `7.6.9`.
 - Capacitor Geolocation: `7.1.8`.
 - Capacitor Splash Screen: `7.0.5`.
 - Capacitor Status Bar: `7.0.6`.
@@ -92,17 +93,18 @@ Lint disponivel:
 npm run lint
 ```
 
-Nao existe atualmente uma suite automatizada de testes de componentes ou de
-fluxo Android. Sempre execute pelo menos o build e uma verificacao manual das
-telas principais antes de publicar.
+Vitest cobre atualmente funções de navegação, formatação de disponibilidade e
+configuração das capturas. Ainda não há uma suite de testes de componentes ou de
+fluxo nativo. Execute build e verificação manual das telas principais antes de
+publicar.
 
 ## 4. Arquitetura do Frontend
 
 ### Entrada e rotas
 
 - `src/main.tsx`: monta React Query, tema, i18n e o `App`.
-- `src/App.tsx`: define BrowserRouter e carregamento lazy.
-- `/`: landing page.
+- `src/App.tsx`: define `HashRouter`, deep links nativos e carregamento lazy.
+- `/`: landing page na web; no app nativo redireciona para o mapa.
 - `/app`: aplicacao do mapa.
 - `/privacy`: politica de privacidade.
 
@@ -116,10 +118,11 @@ O mapa e as telas mais pesadas sao carregados com `lazy`/`Suspense` em
 - `src/components/MobileBottomNav.tsx`: barra inferior mobile.
 - `src/components/NetworkSearch.tsx`: busca de redes sobre o mapa.
 - `src/components/Map/MapComponent.tsx`: mapa, controles, popups, selecao de
-  rede, rota e cards contextuais.
+  rede, prévia de rota e cartão contextual recolhível.
 - `src/components/Map/CustomMarkers.tsx`: marcadores Leaflet customizados.
 - `src/components/Map/SmartLayers.tsx`: camadas de smart city.
 - `src/components/Dashboard/SmartDashboard.tsx`: analytics da rede escolhida.
+- `src/components/AppHome.tsx`: redes próximas/sugeridas e tela de favoritos.
 
 ### Estado global
 
@@ -128,7 +131,8 @@ O mapa e as telas mais pesadas sao carregados com `lazy`/`Suspense` em
 - Lista de redes e detalhes da rede selecionada.
 - Localizacao do usuario e estado de permissao.
 - Favoritos persistidos em `localStorage` na chave
-  `citybikes_favorites`.
+  `citybikes_favorites`; resumos de estações favoritas ficam em
+  `citybikes_favorite_station_details`.
 - Prévia de rota ciclável exibida no mapa e calculada pelo serviço público de rotas do OpenStreetMap.
 - Dados e toggles das camadas smart city.
 
@@ -196,21 +200,27 @@ Regras importantes:
 - Preservar suporte a `prefers-reduced-motion`.
 - Usar marcadores pequenos e clusters para nao esconder o mapa.
 
-Estado atual da experiencia:
+Estado atual da experiência:
 
-- Existe barra inferior mobile.
+- Há acesso às favoritas na navegação mobile e na sidebar para telas médias e
+  grandes; a marca também retorna ao mapa.
 - Busca tem safe area e campo com altura minima de 48px.
+- O cartão de descoberta começa compacto no mobile; detalhes da rede também
+  podem ser recolhidos para liberar área do mapa.
+- Favoritos têm acesso próprio pelo menu e permitem abrir redes e estações
+  salvas diretamente no mapa.
+- Camadas e Smart Data ficam agrupados em um painel identificado; o tema escuro
+  aplica um filtro visual aos tiles do OpenStreetMap e mantém sua atribuição.
 - O mapa usa controles responsivos e zoom reposicionado acima da barra.
 - Analytics abre fullscreen no mobile.
 - Marcadores basicos foram reduzidos para diminuir poluicao visual.
-- A logo oficial ainda nao foi integrada porque o arquivo original nao esta
-  presente localmente. O projeto usa `public/icons/bike-icon.svg` como marca
-  provisoria.
+- Os assets de marca têm origem em `assets/brand-source/` e são gerados pelo
+  script `scripts/generate-brand-assets.mjs`.
 
 Ao fazer uma mudanca de layout, verificar simultaneamente modo claro e escuro,
 mapa sem dados, mapa com dados, permissao negada e rede selecionada.
 
-## 7. Android e Capacitor
+## 7. Android e iOS com Capacitor
 
 Config atual em `capacitor.config.ts`:
 
@@ -218,6 +228,8 @@ Config atual em `capacitor.config.ts`:
 - App ID: `com.citybikes`.
 - Web directory: `dist`.
 - Android scheme: `https`.
+- Bundle ID iOS: `br.com.citybikes`; workflows iOS ficam em
+  `.github/workflows/ios*.yml` e o projeto nativo em `ios/App/`.
 - Splash sem spinner, com duracao configurada de 2 segundos.
 
 Fluxo correto depois de alterar frontend:
@@ -225,6 +237,7 @@ Fluxo correto depois de alterar frontend:
 ```bash
 npm run build
 npx cap sync android
+npx cap sync ios
 ```
 
 O `cap sync` copia `dist` para
@@ -278,11 +291,12 @@ Verificar checksum:
 sha256sum android/app/build/outputs/bundle/release/app-release.aab
 ```
 
-Release atual documentado:
+Release Android atual:
 
-- Version code: `6`.
+- Version code: `10`.
 - Version name: `1.0.6`.
-- SHA-256: `d20023d0756680d8361ca2aabf9800a7d5e51f422365ac150a8bf081326f01a4`.
+- Calcule o SHA-256 do AAB recém-gerado; não reutilize checksum de um release
+  anterior.
 
 O arquivo `RELEASE.md` possui o checklist resumido de publicacao.
 
@@ -290,7 +304,7 @@ O arquivo `RELEASE.md` possui o checklist resumido de publicacao.
 
 - Enviar somente o AAB assinado gerado por `bundleRelease`.
 - Cada upload precisa de `versionCode` maior que o anterior.
-- Os codigos `3`, `4` e `5` ja foram usados. O proximo release deve iniciar em `6` ou maior.
+- Os códigos até `10` já foram usados. O próximo release deve iniciar em `11` ou maior.
 - Manter Play App Signing ativo.
 - Comparar a chave de upload local com a cadastrada no Play Console.
 - Para teste interno, adicionar o tester, concluir opt-in e instalar com a
@@ -362,24 +376,25 @@ permissao e negada.
 - Atualizar documentacao quando mudar fluxo, versao, permissao ou release.
 - Nunca commitar segredos, keystores ou arquivos locais de ambiente.
 
-## 12. Proximas Melhorias Conhecidas
+## 12. Próximas melhorias conhecidas
 
 Itens que podem ser tratados por novos devs:
 
-- Integrar a logo oficial em header, launcher, splash e variantes de marcador.
-- Transformar todos os paineis de mapa em bottom sheets consistentes.
-- Criar testes automatizados para busca, favoritos, selecao de rede e estados
-  de erro.
+- Expandir testes automatizados para busca, favoritos, seleção de rede,
+  localização e estados de erro.
+- Avaliar orientação passo a passo; o recurso atual é somente uma prévia da rota.
+- Explorar dados de segurança ciclável e transporte público com fontes e
+  cobertura confiáveis.
 - Adicionar validacao de AAB automatizada no pipeline.
 - Avaliar code splitting adicional para reduzir os chunks grandes do mapa e do
   bundle principal.
-- Documentar e testar fisicamente em dispositivos Android reais.
+- Documentar e testar fisicamente em dispositivos Android e iOS reais.
 - Avaliar R8 somente com regras, mapping e regressao controlados.
 
 ## 13. Arquivos de Referencia
 
-- `README.md`: atualmente ainda contem o README inicial do template Vite.
-- `RELEASE.md`: checklist curto de release Android.
-- `PROJECT_ANALYSIS.md`: analise funcional existente.
+- `README.md`: visão geral, comandos e mapa dos módulos.
+- `RELEASE.md`: estado de release iOS e Android.
+- `PROJECT_ANALYSIS.md`: estado implementado e prioridades de produto.
 - `Urban data api roadmap.md`: ideias de evolucao de dados urbanos.
 - `ONBOARDING.md`: este guia operacional central.

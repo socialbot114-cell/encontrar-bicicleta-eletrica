@@ -20,9 +20,10 @@
 ## Fluxo atual
 
 - Build único do `.app` no GitHub Actions.
-- Captura nativa via `simctl screenshot` para iPhone e iPad.
-- Fixtures locais para redes, sem depender da API CityBikes.
-- Tema claro e escuro controlados pelo estado de captura.
+- Captura nativa via `simctl screenshot` no iPhone 17.
+- Cinco estados: explorar, estação, rota, camadas em tema escuro e favoritos.
+- Estados de captura controlam tema, idioma e rede exibida para tornar os
+  cenários repetíveis.
 
 Os vídeos locais `iphone-current-captures-reference.mp4` e
 `ipad-current-captures-reference.mp4` são uma montagem dos PNGs atuais para

@@ -1,10 +1,11 @@
-import type { Location, Network } from '../types';
+import type { FavoriteStationSummary, Location, Network } from '../types';
 
 export type ScreenshotCaptureMode =
     | 'map'
     | 'dark-map'
     | 'video-search'
     | 'brasilia-explore'
+    | 'brasilia-favorites'
     | 'brasilia-station'
     | 'brasilia-route';
 
@@ -13,11 +14,12 @@ export const isScreenshotCaptureMode = (value: string | null): value is Screensh
     || value === 'dark-map'
     || value === 'video-search'
     || value === 'brasilia-explore'
+    || value === 'brasilia-favorites'
     || value === 'brasilia-station'
     || value === 'brasilia-route';
 
 export const isBrasiliaCaptureMode = (mode: ScreenshotCaptureMode | null): boolean =>
-    mode === 'brasilia-explore' || mode === 'brasilia-station' || mode === 'brasilia-route' || mode === 'video-search';
+    mode === 'brasilia-explore' || mode === 'brasilia-favorites' || mode === 'brasilia-station' || mode === 'brasilia-route' || mode === 'video-search';
 
 export const brasiliaCaptureLocation: Location = {
     latitude: -15.793889,
@@ -27,6 +29,18 @@ export const brasiliaCaptureLocation: Location = {
 };
 
 export const brasiliaCaptureStationName = '17 - Funarte';
+
+export const brasiliaFavoriteStation: FavoriteStationSummary = {
+    key: 'bikebrasilia::capture-funarte',
+    stationId: 'capture-funarte',
+    networkId: 'bikebrasilia',
+    networkName: 'BikeBrasilia',
+    city: 'Brasília',
+    country: 'BR',
+    name: brasiliaCaptureStationName,
+    latitude: -15.7918,
+    longitude: -47.8827,
+};
 
 export const screenshotNetworks: Network[] = [
     {

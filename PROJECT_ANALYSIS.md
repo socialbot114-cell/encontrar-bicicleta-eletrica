@@ -1,28 +1,39 @@
-# Análise do Projeto & Sugestões de Melhoria
+# Análise do Projeto & Próximas Melhorias
 
-Após uma análise detalhada do código e da estrutura do projeto "CityBikes Premium", identifiquei várias oportunidades para elevar a qualidade, performance e utilidade da aplicação.
+## Estado implementado
 
-## 1. Melhorias Técnicas e de Performance
-*   **Implementação do React Query (TanStack Query)**: O projeto atualmente usa `useEffect` e `axios` para buscar dados. Migrar para React Query traria cache automático, sincronização em segundo plano e uma experiência de "carregamento instantâneo" ao alternar entre estações.
-*   **Marker Clustering**: Para uma visualização global, renderizar centenas de marcadores pode impactar a performance. O uso de clusters melhoraria significativamente o FPS do mapa ao diminuir o zoom.
-*   **Gerenciamento de Estado**: Embora o `Context API` seja adequado agora, conforme o app cresce, centralizar os dados de sensores "Smart" com React Query seria mais escalável.
+- App React/TypeScript com `HashRouter`, Vite e Capacitor para web, Android e iOS.
+- Mapa Leaflet de redes globais, busca por cidade/rede e agrupamento de
+  marcadores.
+- Localização opcional, redes próximas, favoritos persistidos e abertura direta
+  de redes/estações favoritas no mapa, com acesso em navegação mobile e desktop.
+- Detalhes de disponibilidade, filtro de bicicletas elétricas, prévia de rota
+  ciclável e compartilhamento nativo de estações.
+- Camadas Smart City, dashboard, tema claro/escuro com estilos de mapa
+  correspondentes e recursos de idioma em inglês, português, espanhol e francês;
+  a cobertura ainda precisa ser revisada nos textos legados.
+- TanStack Query com cache e retry; dados smart atualizados após movimentos do
+  mapa com debounce e arredondamento do centro.
 
-## 2. Novas Funcionalidades (UX & Utilidade)
-*   **Rotas para Ciclistas**: Adicionar funcionalidade de direções do local do usuário até a estação selecionada, filtrando rotas amigáveis para bikes (menos inclinação, mais ciclovias).
-*   **Favoritos**: Permitir que o usuário salve redes ou estações específicas (armazenado no `LocalStorage`) para acesso rápido.
-*   **Geolocalização Automática**: Botão "Perto de Mim" que seleciona automaticamente a rede mais próxima ao abrir o app.
+## Melhorias prioritárias
 
-## 3. Dados "Smart" Avançados
-*   **Dashboard de Insights**: Transformar a visualização estática de clima e qualidade do ar em gráficos de tendência (previsão para as próximas 8 horas) usando `recharts`.
-*   **Camada de Transporte Público**: Adicionar paradas de ônibus/metrô próximas às estações de bike para facilitar o transporte intermodal.
+1. **Experiência de navegação:** validar em dispositivos reais o painel
+   recolhível, acesso a favoritos e fluxo de localização; cobrir tela pequena,
+   tablet e permissões negadas.
+2. **Orientação ciclável:** decidir se o produto deve evoluir da prévia atual
+   (linha, distância e duração) para instruções passo a passo.
+3. **Mapa e dados:** avaliar indicadores visuais de disponibilidade nos
+   marcadores e fontes de ciclovias/segurança e transporte público antes de
+   expandir as camadas.
+4. **Qualidade:** ampliar testes de componentes e fluxos, além dos testes de
+   funções já existentes em `src/lib/navigation.test.ts`.
+5. **Manutenção:** acompanhar limites, atribuições e disponibilidade de APIs e
+   tiles externos; manter onboarding, roadmap e documentação de release
+   alinhados ao estado publicado.
 
-## 4. Design e Estética
-*   **Marcadores Customizados (Neon/Glow)**: Substituir os ícones padrão do Leaflet por SVGs customizados com efeito de brilho que condizem com a estética "Premium" do restante do app.
-*   **Micro-animações**: Adicionar efeitos de "ímã" nos botões e transições mais suaves ao abrir popups de estações.
+## Referências
 
----
-
-## Próximos Passos Sugeridos
-Eu recomendo começarmos pela **Fase 1 (Performance)** com a integração do **React Query**, pois isso facilitará muito todas as outras implementações de dados no futuro.
-
-Gostaria que eu começasse a implementar alguma dessas ideias? Caso sim, qual delas prefere priorizar?
+- `ONBOARDING.md`: comandos, arquitetura, APIs e fluxos nativos.
+- `Urban data api roadmap.md`: funcionalidades de dados urbanos e ideias
+  futuras.
+- `store-kit/audit/`: evidências e relatórios das capturas de loja.

@@ -38,6 +38,18 @@ export interface NetworkDetail extends Network {
     stations: Station[];
 }
 
+export interface FavoriteStationSummary {
+    key: string;
+    stationId: string;
+    networkId: string;
+    networkName: string;
+    city: string;
+    country: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+}
+
 // --- Smart City Data Types ---
 
 export interface WeatherCondition {

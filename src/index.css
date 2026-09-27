@@ -81,6 +81,20 @@
     pointer-events: auto;
   }
 
+  .app-home-panel-favorites {
+    max-height: min(70dvh, 42rem);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+  }
+
+  .app-home-favorites-list {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+
   .analytics-consent {
     position: fixed;
     z-index: 7000;
@@ -118,6 +132,10 @@
       bottom: 1.5rem;
       width: min(44rem, calc(100vw - 8rem));
     }
+
+    .app-home-expand-button {
+      display: none;
+    }
   }
 }
 
@@ -130,6 +148,10 @@
   .leaflet-popup-content-wrapper,
   .leaflet-popup-tip {
     color: rgb(30 41 59);
+  }
+
+  .dark .leaflet-tile-pane {
+    filter: invert(100%) hue-rotate(180deg) brightness(0.88) contrast(0.9) saturate(0.75);
   }
 
   .dark .leaflet-popup-content-wrapper,
@@ -270,6 +292,35 @@
     .app-home-panel {
       max-height: none;
       right: 4.5rem;
+    }
+
+    .app-home-panel-collapsed {
+      padding: 0.9rem 1rem;
+    }
+
+    .app-home-panel-collapsed .app-home-content {
+      display: none;
+    }
+
+    .app-home-panel-collapsed .app-home-description,
+    .app-home-panel-collapsed .app-home-location-button {
+      display: none;
+    }
+
+    .app-home-panel-collapsed h1 {
+      max-width: 13rem;
+      font-size: 1.125rem;
+      line-height: 1.25;
+    }
+
+    .app-home-panel-expanded {
+      max-height: min(58dvh, 34rem);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .app-home-panel-favorites {
+      max-height: min(68dvh, 40rem);
     }
 
     .app-home-networks {

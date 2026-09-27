@@ -41,7 +41,11 @@ const DeepLinkHandler = () => {
             navigate('/');
             return;
         }
-        navigate(captureMode === 'landing' ? '/' : `/app?capture=${captureMode}`);
+        navigate(captureMode === 'landing'
+            ? '/'
+            : captureMode === 'brasilia-favorites'
+                ? `/app?capture=${captureMode}#favorites`
+                : `/app?capture=${captureMode}`);
     };
 
     const handleUrl = (rawUrl: string) => {

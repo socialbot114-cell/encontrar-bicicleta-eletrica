@@ -1,12 +1,14 @@
 import React, { createContext, useCallback, useContext, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { Network, NetworkDetail, Location, WeatherCondition, AirQuality, Earthquake, ChargeStation, POI } from '../types';
+import type { Network, NetworkDetail, Location, WeatherCondition, AirQuality, Earthquake, ChargeStation, POI, Station, FavoriteStationSummary } from '../types';
 import { fetchNetworks, fetchNetworkDetails } from '../api/citybikes';
 import * as smartCity from '../api/smartCity';
 import { getCurrentPosition } from '../lib/geolocation';
+import { favoriteStationKey } from '../lib/favorites';
 import { trackEvent } from '../lib/analytics';
 import {
     brasiliaCaptureLocation,
+    brasiliaFavoriteStation,
     isBrasiliaCaptureMode,
     screenshotNetworks,
     videoSearchNetworks,
@@ -35,7 +37,11 @@ interface CityBikesContextProps {
         stations: string[];
     };
     toggleFavoriteNetwork: (id: string) => void;
-    toggleFavoriteStation: (id: string) => void;
+    favoriteStationDetails: FavoriteStationSummary[];
+    toggleFavoriteStation: (station: Station, network: NetworkDetail) => void;
+    favoriteStationTarget: { networkId: string; stationId: string } | null;
+    openFavoriteStation: (networkId: string, stationId: string) => void;
+    clearFavoriteStationTarget: () => void;
     // Smart City Data
     weather: WeatherCondition | null;
     airQuality: AirQuality | null;
@@ -71,6 +77,9 @@ export const CityBikesProvider: React.FC<{ children: React.ReactNode; captureMod
     );
     const captureLocationRequestedRef = React.useRef(false);
     const [favorites, setFavorites] = useState<{ networks: string[], stations: string[] }>(() => {
+        if (captureMode === 'brasilia-favorites') {
+            return { networks: ['bikebrasilia'], stations: [brasiliaFavoriteStation.key] };
+        }
         try {
             const saved = localStorage.getItem('citybikes_favorites');
             const parsed = saved ? JSON.parse(saved) : { networks: [], stations: [] };
@@ -82,6 +91,17 @@ export const CityBikesProvider: React.FC<{ children: React.ReactNode; captureMod
             return { networks: [], stations: [] };
         }
     });
+    const [favoriteStationDetails, setFavoriteStationDetails] = useState<FavoriteStationSummary[]>(() => {
+        if (captureMode === 'brasilia-favorites') return [brasiliaFavoriteStation];
+        try {
+            const saved = localStorage.getItem('citybikes_favorite_station_details');
+            const parsed = saved ? JSON.parse(saved) : [];
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    });
+    const [favoriteStationTarget, setFavoriteStationTarget] = useState<{ networkId: string; stationId: string } | null>(null);
     const [smartLayers, setSmartLayers] = useState({
         weather: true,
         earthquakes: false,
@@ -95,12 +115,16 @@ export const CityBikesProvider: React.FC<{ children: React.ReactNode; captureMod
         localStorage.setItem('citybikes_favorites', JSON.stringify(favorites));
     }, [favorites]);
 
+    useEffect(() => {
+        localStorage.setItem('citybikes_favorite_station_details', JSON.stringify(favoriteStationDetails));
+    }, [favoriteStationDetails]);
+
     // Queries
     const networksQuery = useQuery({
         queryKey: ['networks', captureMode ?? 'live'],
         queryFn: async () => {
             if (captureMode === 'map' || captureMode === 'dark-map') return screenshotNetworks;
-            if (captureMode === 'video-search' || captureMode === 'brasilia-station' || captureMode === 'brasilia-route') {
+            if (captureMode === 'video-search' || captureMode === 'brasilia-favorites' || captureMode === 'brasilia-station' || captureMode === 'brasilia-route') {
                 return videoSearchNetworks;
             }
             const liveNetworks = await fetchNetworks();
@@ -180,16 +204,40 @@ export const CityBikesProvider: React.FC<{ children: React.ReactNode; captureMod
         });
     };
 
-    const toggleFavoriteStation = (id: string) => {
+    const toggleFavoriteStation = (station: Station, network: NetworkDetail) => {
+        const key = favoriteStationKey(network.id, station.id);
+        const isFavorite = favorites.stations.includes(key);
+        const summary: FavoriteStationSummary = {
+            key,
+            stationId: station.id,
+            networkId: network.id,
+            networkName: network.name,
+            city: network.location.city,
+            country: network.location.country,
+            name: station.name,
+            latitude: station.latitude,
+            longitude: station.longitude,
+        };
         trackEvent('FAVORITE_STATION_TOGGLED');
         setFavorites(prev => {
-            const exists = prev.stations.includes(id);
             return {
                 ...prev,
-                stations: exists ? prev.stations.filter(s => s !== id) : [...prev.stations, id]
+                stations: isFavorite
+                    ? prev.stations.filter((savedId) => savedId !== key && savedId !== station.id)
+                    : [...prev.stations.filter((savedId) => savedId !== station.id), key],
             };
         });
+        setFavoriteStationDetails((previous) => isFavorite
+            ? previous.filter((savedStation) => savedStation.key !== key)
+            : [...previous.filter((savedStation) => savedStation.key !== key), summary]);
     };
+
+    const openFavoriteStation = useCallback((networkId: string, stationId: string) => {
+        setFavoriteStationTarget({ networkId, stationId });
+        setSelectedNetworkId(networkId);
+    }, []);
+
+    const clearFavoriteStationTarget = useCallback(() => setFavoriteStationTarget(null), []);
 
     const toggleSmartLayer = (layer: keyof typeof smartLayers) => {
         trackEvent('SMART_LAYER_TOGGLED', { layer });
@@ -198,6 +246,7 @@ export const CityBikesProvider: React.FC<{ children: React.ReactNode; captureMod
 
     const clearSelection = () => {
         setSelectedNetworkId(null);
+        setFavoriteStationTarget(null);
     };
 
     const requestLocation = useCallback(async () => {
@@ -251,6 +300,10 @@ export const CityBikesProvider: React.FC<{ children: React.ReactNode; captureMod
             favorites,
             toggleFavoriteNetwork,
             toggleFavoriteStation,
+            favoriteStationDetails,
+            favoriteStationTarget,
+            openFavoriteStation,
+            clearFavoriteStationTarget,
             weather: weatherQuery.data || null,
             airQuality: airQualityQuery.data || null,
             earthquakes: earthquakesQuery.data || [],

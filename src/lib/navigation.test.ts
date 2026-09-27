@@ -3,7 +3,7 @@ import { vi } from 'vitest';
 import { fetchCyclingRoute } from '../api/cyclingRouting';
 import { formatCountryName } from './geo';
 import { formatDistanceKm, formatFreshness, parseDataTimestamp } from './navigation';
-import { brasiliaCaptureStationName, isBrasiliaCaptureMode, isScreenshotCaptureMode, videoSearchNetworks } from './screenshotFixtures';
+import { brasiliaCaptureStationName, brasiliaFavoriteStation, isBrasiliaCaptureMode, isScreenshotCaptureMode, videoSearchNetworks } from './screenshotFixtures';
 
 describe('in-app cycling routes', () => {
     it('requests a bicycle route and converts GeoJSON coordinates for the map', async () => {
@@ -79,11 +79,14 @@ describe('freshness labels', () => {
 describe('Brasília App Store capture setup', () => {
     it('uses separate, localized capture modes and the live BikeBrasilia network ID', () => {
         expect(isScreenshotCaptureMode('brasilia-explore')).toBe(true);
+        expect(isScreenshotCaptureMode('brasilia-favorites')).toBe(true);
         expect(isScreenshotCaptureMode('brasilia-station')).toBe(true);
         expect(isScreenshotCaptureMode('brasilia-route')).toBe(true);
+        expect(isBrasiliaCaptureMode('brasilia-favorites')).toBe(true);
         expect(isBrasiliaCaptureMode('video-search')).toBe(true);
         expect(videoSearchNetworks[0].id).toBe('bikebrasilia');
         expect(videoSearchNetworks[0].location.city).toBe('Brasília');
         expect(brasiliaCaptureStationName).toBe('17 - Funarte');
+        expect(brasiliaFavoriteStation.name).toBe(brasiliaCaptureStationName);
     });
 });

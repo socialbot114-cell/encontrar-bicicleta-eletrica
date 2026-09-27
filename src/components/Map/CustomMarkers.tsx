@@ -18,6 +18,17 @@ export const createCustomMarker = (color: string, iconHtml?: string) => {
 };
 
 export const bikeIcon = createCustomMarker('#22c55e');
+const stationBikeGlyph = '<svg viewBox="0 0 24 24" width="12" height="12" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h-3l-3 7h7l-3-7ZM8 17.5l4-8 3 8M11 9.5H8"/></svg>';
+const availableStationIcon = createCustomMarker('#16a34a', stationBikeGlyph);
+const lowStationIcon = createCustomMarker('#f59e0b', stationBikeGlyph);
+const emptyStationIcon = createCustomMarker('#64748b', stationBikeGlyph);
+
+export const stationIconForAvailability = (freeBikes: number) => {
+    if (freeBikes <= 0) return emptyStationIcon;
+    if (freeBikes <= 2) return lowStationIcon;
+    return availableStationIcon;
+};
+
 export const evIcon = createCustomMarker('#06b6d4', '<svg viewBox="0 0 24 24" width="10" height="10" stroke="white" stroke-width="3" fill="none"><path d="M13 2L3 14h9l-1 8L21 10h-9l1-8z"/></svg>');
 export const poiIcon = createCustomMarker('#a855f7');
 export const waterIcon = createCustomMarker('#3b82f6', '<svg viewBox="0 0 24 24" width="10" height="10" stroke="white" stroke-width="3" fill="none"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>');

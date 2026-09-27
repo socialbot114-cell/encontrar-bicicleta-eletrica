@@ -62,6 +62,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             || mode == "dark-map"
             || mode == "video-search"
             || mode == "brasilia-explore"
+            || mode == "brasilia-favorites"
             || mode == "brasilia-station"
             || mode == "brasilia-route" else { return }
         guard let viewController = window?.rootViewController as? CAPBridgeViewController,

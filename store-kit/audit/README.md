@@ -30,15 +30,16 @@ Vídeos locais de referência:
 - `iphone-current-captures-reference.mp4`
 - `ipad-current-captures-reference.mp4`
 
-O workflow `.github/workflows/ios-screenshots.yml` publica três PNGs nativos por
-dispositivo. O Maestro permanece apenas como fluxo opcional e não bloqueia a
-captura oficial.
+O workflow `.github/workflows/ios-screenshots.yml` publica cinco PNGs nativos
+do iPhone 17: exploração, estação e rota (capturas para a loja), mais tema
+escuro/camadas e favoritos (capturas de revisão). O Maestro permanece apenas
+como fluxo opcional e não bloqueia as capturas.
 
 ## Como gerar uma nova auditoria
 
 1. Execute manualmente o workflow `CityBikes iOS Screenshots` no GitHub.
-2. Baixe `citybikes-store-screenshots-iphone` e `citybikes-store-screenshots-ipad`.
-3. Revise os seis PNGs para verificar carregamento, navegação e tema no iPad Air 11-inch (M3), usado na revisão.
-4. As capturas aprovadas ficam em `../submission-1.0-screenshots/{iphone,ipad}/`; os arquivos históricos em `../screenshots/` permanecem separados.
+2. Baixe o artefato `citybikes-store-screenshots-iphone`.
+3. Revise os cinco PNGs nativos; use apenas `01`–`03` na submissão da loja.
+4. As capturas aprovadas para a loja ficam em `../submission-1.0-screenshots/`; os arquivos históricos em `../screenshots/` permanecem separados.
 
 O fluxo não cria mockups nem redimensiona a tela nativa do simulador.
