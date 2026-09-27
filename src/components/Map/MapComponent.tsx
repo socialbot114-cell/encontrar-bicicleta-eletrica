@@ -220,10 +220,9 @@ const MapComponent = () => {
         let attempts = 0;
         let timer = 0;
         const openCaptureStation = () => {
-            const marker = Array.from(document.querySelectorAll<HTMLElement>('.leaflet-marker-icon.custom-marker'))
-                .find((element) => element.title.includes(captureStation.name));
+            const marker = stationMarkerRefs.current.get(captureStation.id);
             if (marker) {
-                marker.click();
+                marker.openPopup();
                 return;
             }
             if (attempts < 30) {
