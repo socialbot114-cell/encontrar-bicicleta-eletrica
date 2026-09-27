@@ -20,12 +20,14 @@ do {
     let searchableText = recognizedText
         .joined(separator: "\n")
         .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "pt_BR"))
+    let normalizedSearchableText = String(searchableText.filter { !$0.isWhitespace })
 
     let missingText = expectedText.filter { expected in
-        !searchableText.contains(expected.folding(
+        let normalizedExpected = String(expected.folding(
             options: [.caseInsensitive, .diacriticInsensitive],
             locale: Locale(identifier: "pt_BR"),
-        ))
+        ).filter { !$0.isWhitespace })
+        return !normalizedSearchableText.contains(normalizedExpected)
     }
 
     guard missingText.isEmpty else {
