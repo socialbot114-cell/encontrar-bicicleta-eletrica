@@ -293,8 +293,8 @@ sha256sum android/app/build/outputs/bundle/release/app-release.aab
 
 Release Android atual:
 
-- Version code: `10`.
-- Version name: `1.0.6`.
+- Version code: `11`.
+- Version name: `1.1.0`.
 - Calcule o SHA-256 do AAB recém-gerado; não reutilize checksum de um release
   anterior.
 
@@ -304,7 +304,7 @@ O arquivo `RELEASE.md` possui o checklist resumido de publicacao.
 
 - Enviar somente o AAB assinado gerado por `bundleRelease`.
 - Cada upload precisa de `versionCode` maior que o anterior.
-- Os códigos até `10` já foram usados. O próximo release deve iniciar em `11` ou maior.
+- Os códigos até `10` já foram enviados; o `11` está reservado para a 1.1.0 e o próximo release deve usar `12` ou maior.
 - Manter Play App Signing ativo.
 - Comparar a chave de upload local com a cadastrada no Play Console.
 - Para teste interno, adicionar o tester, concluir opt-in e instalar com a
