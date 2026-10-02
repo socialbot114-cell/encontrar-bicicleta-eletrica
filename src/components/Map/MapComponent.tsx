@@ -3,6 +3,8 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, ZoomControl }
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Share } from '@capacitor/share';
 import { useTranslation } from 'react-i18next';
 import { useCityBikes } from '../../context/CityBikesContext';
@@ -135,6 +137,7 @@ const MapComponent = () => {
             ?? selectedNetwork.stations[0]
             ?? null;
     }, [captureMode, selectedNetwork]);
+    const isStationCaptureMode = captureMode === 'brasilia-station' || captureMode === 'video-search';
     const language = i18n.resolvedLanguage ?? i18n.language;
     const handlePopupStateChange = useCallback((isOpen: boolean) => setStationPopupOpen(isOpen), []);
 
@@ -153,21 +156,21 @@ const MapComponent = () => {
 
     // Recenter on user location once it becomes available
     useEffect(() => {
-        if (mapRef && userLocation) {
+        if (mapRef && userLocation && !isStationCaptureMode) {
             mapRef.setView([userLocation.latitude, userLocation.longitude], 11, { animate: true });
         }
-    }, [mapRef, userLocation]);
+    }, [isStationCaptureMode, mapRef, userLocation]);
 
     // Focus on Selected Network
     useEffect(() => {
-        if (mapRef && selectedNetwork) {
+        if (mapRef && selectedNetwork && !isStationCaptureMode) {
             mapRef.setView(
                 [selectedNetwork.location.latitude, selectedNetwork.location.longitude],
                 13,
                 { animate: true }
             );
         }
-    }, [mapRef, selectedNetwork]);
+    }, [isStationCaptureMode, mapRef, selectedNetwork]);
 
     useEffect(() => {
         setNetworkPanelCollapsed(false);
@@ -217,13 +220,18 @@ const MapComponent = () => {
     }, [captureMode, captureStation, mapRef, userLocation]);
 
     useEffect(() => {
-        if (captureMode !== 'brasilia-station' || !captureStation || !userLocation) return;
+        if (captureMode !== 'brasilia-station' || !captureStation || !userLocation || !mapRef) return;
         let attempts = 0;
         let timer = 0;
         const openCaptureStation = () => {
+            // Re-assert the station viewport in case an earlier view change landed after ours.
+            const center = mapRef.getCenter();
+            if (mapRef.getZoom() < 16 || Math.abs(center.lat - captureStation.latitude) > 0.002 || Math.abs(center.lng - captureStation.longitude) > 0.002) {
+                mapRef.setView([captureStation.latitude, captureStation.longitude], 16, { animate: false });
+            }
             const marker = stationMarkerRefs.current.get(captureStation.id);
-            if (marker && mapRef?.hasLayer(marker)) {
-                marker.openPopup();
+            if (marker && mapRef.hasLayer(marker)) {
+                if (!marker.isPopupOpen()) marker.openPopup();
                 if (marker.isPopupOpen()) return;
             }
             if (attempts < 60) {
