@@ -241,6 +241,28 @@
   }
 }
 
+/* Leaflet zoom control follows the app theme */
+.dark .leaflet-bar {
+  border-color: rgb(255 255 255 / 0.12);
+}
+
+.dark .leaflet-bar a {
+  background-color: rgb(15 23 42 / 0.94);
+  border-bottom-color: rgb(255 255 255 / 0.12);
+  color: rgb(226 232 240);
+}
+
+.dark .leaflet-bar a:hover,
+.dark .leaflet-bar a:focus-visible {
+  background-color: rgb(30 41 59);
+  color: white;
+}
+
+.dark .leaflet-bar a.leaflet-disabled {
+  background-color: rgb(15 23 42 / 0.94);
+  color: rgb(100 116 139);
+}
+
 /* Marker Cluster Stylings */
 .marker-cluster-small,
 .marker-cluster-medium,

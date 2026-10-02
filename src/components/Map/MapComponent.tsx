@@ -144,15 +144,16 @@ const MapComponent = () => {
     // Initial world view (shown before any location is available)
     useEffect(() => {
         if (mapRef && !didInitialViewRef.current) {
+            didInitialViewRef.current = true;
+            if (isStationCaptureMode) return;
             mapRef.setView(
                 captureMode === 'brasilia-explore'
                     ? [brasiliaCaptureLocation.latitude, brasiliaCaptureLocation.longitude]
                     : [20, 0],
                 captureMode === 'brasilia-explore' ? 10 : 2,
             );
-            didInitialViewRef.current = true;
         }
-    }, [captureMode, mapRef]);
+    }, [captureMode, isStationCaptureMode, mapRef]);
 
     // Recenter on user location once it becomes available
     useEffect(() => {
@@ -220,7 +221,7 @@ const MapComponent = () => {
     }, [captureMode, captureStation, mapRef, userLocation]);
 
     useEffect(() => {
-        if (captureMode !== 'brasilia-station' || !captureStation || !userLocation || !mapRef) return;
+        if (captureMode !== 'brasilia-station' || !captureStation || !mapRef) return;
         let attempts = 0;
         let timer = 0;
         const openCaptureStation = () => {
@@ -241,7 +242,7 @@ const MapComponent = () => {
         };
         timer = window.setTimeout(openCaptureStation, 800);
         return () => window.clearTimeout(timer);
-    }, [captureMode, captureStation, mapRef, userLocation]);
+    }, [captureMode, captureStation, mapRef]);
 
     useEffect(() => {
         if (mapRef && activeRoute) {
@@ -763,7 +764,7 @@ const MapComponent = () => {
                                                 <Star className={`w-4 h-4 ${favorites.stations.includes(favoriteStationKey(selectedNetwork.id, station.id)) || favorites.stations.includes(station.id) ? 'fill-yellow-400 text-yellow-500' : 'text-slate-400'}`} />
                                             </button>
                                          </div>
-                                         {((station.extra?.ebikes ?? 0) > 0 || station.extra?.has_ebikes) && (
+                                         {((station.extra?.ebikes ?? 0) > 0 || (station.extra?.has_ebikes && station.extra?.ebikes === undefined)) && (
                                              <div className="mb-4 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300">
                                                  <BatteryCharging className="h-4 w-4" />
                                                   {station.extra?.ebikes !== undefined

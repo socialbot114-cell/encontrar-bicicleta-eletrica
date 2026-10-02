@@ -46,7 +46,6 @@ export const HeroSection = () => {
                                 className="relative group px-7 py-4 text-base font-black text-white bg-emerald-600 rounded-xl overflow-hidden transition-all duration-300 border border-emerald-500 shadow-lg shadow-emerald-600/20"
                             >
                                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-600 opacity-100 group-hover:opacity-90 transition-opacity" />
-                                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
                                 <div className="relative flex items-center gap-3">
                                     {t('enter_app')} <Globe className="w-5 h-5" />
                                 </div>

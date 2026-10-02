@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
-    ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid,
+    ResponsiveContainer, XAxis, YAxis, CartesianGrid,
     Tooltip, PieChart, Pie, Cell, BarChart, Bar
 } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { useCityBikes } from '../../context/CityBikesContext';
-import { X, TrendingUp, Activity, PieChart as PieIcon, BarChart3 } from 'lucide-react';
+import { X, Bike, Activity, PieChart as PieIcon, BarChart3, ParkingSquare, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface DashboardProps {
@@ -14,6 +15,7 @@ interface DashboardProps {
 
 export const SmartDashboard: React.FC<DashboardProps> = ({ onClose }) => {
     const { selectedNetwork, weather, airQuality } = useCityBikes();
+    const { t } = useTranslation();
     const closeButtonRef = useRef<HTMLButtonElement>(null);
 
     const trapFocus = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -44,9 +46,21 @@ export const SmartDashboard: React.FC<DashboardProps> = ({ onClose }) => {
     // Data for Station Availability Pie Chart
     const totalBikes = selectedNetwork?.stations.reduce((acc, s) => acc + s.free_bikes, 0) ?? 0;
     const totalSlots = selectedNetwork?.stations.reduce((acc, s) => acc + (s.empty_slots || 0), 0) ?? 0;
+    const totalCapacity = totalBikes + totalSlots;
+    const percentOf = (value: number) => (totalCapacity > 0 ? Math.round((value / totalCapacity) * 100) : null);
+    const bikesPercent = percentOf(totalBikes);
+    const slotsPercent = percentOf(totalSlots);
     const pieData = [
-        { name: 'Available Bikes', value: totalBikes },
-        { name: 'Empty Slots', value: totalSlots },
+        { name: t('dashboard_bikes'), value: totalBikes },
+        { name: t('dashboard_docks'), value: totalSlots },
+    ];
+
+    // Station status from live data: stations reporting no free docks count as full.
+    const stations = selectedNetwork?.stations ?? [];
+    const stationStatus = [
+        { key: 'with_bikes', label: t('dashboard_status_with_bikes'), count: stations.filter((s) => s.free_bikes > 0).length, color: 'bg-emerald-500' },
+        { key: 'empty', label: t('dashboard_status_empty'), count: stations.filter((s) => s.free_bikes === 0).length, color: 'bg-rose-500' },
+        { key: 'full', label: t('dashboard_status_full'), count: stations.filter((s) => s.empty_slots === 0).length, color: 'bg-amber-500' },
     ];
 
     // Data for Top 5 Stations Bar Chart
@@ -57,13 +71,6 @@ export const SmartDashboard: React.FC<DashboardProps> = ({ onClose }) => {
             name: s.name.length > 15 ? s.name.substring(0, 12) + '...' : s.name,
             bikes: s.free_bikes
         }));
-
-    // Demo trend data — deterministic, labelled as demonstration
-    const trendData = useMemo(() => Array.from({ length: 7 }, (_, i) => ({
-        time: `${12 + i}:00`,
-        bikes: Math.round(totalBikes * (0.85 + ((i % 3) / 10))),
-        slots: Math.round(totalSlots * (0.85 + ((i % 3) / 10))),
-    })), [totalBikes, totalSlots]);
 
     if (!selectedNetwork) return null;
 
@@ -83,14 +90,14 @@ export const SmartDashboard: React.FC<DashboardProps> = ({ onClose }) => {
                 <div>
                         <h2 id="dashboard-title" className="min-w-0 truncate text-xl md:text-3xl font-black text-white tracking-tighter flex items-center gap-2 md:gap-3">
                         <Activity className="text-cyan-400 w-6 h-6 md:w-8 md:h-8 shrink-0" />
-                        {selectedNetwork.name} Analytics
+                        {t('dashboard_title', { network: selectedNetwork.name })}
                     </h2>
-                     <p className="hidden md:block text-slate-400 font-bold uppercase tracking-widest text-xs mt-1">Smart City Insights & Real-time Trends</p>
+                     <p className="hidden md:block text-slate-400 font-bold uppercase tracking-widest text-xs mt-1">{t('dashboard_subtitle')}</p>
                 </div>
                 <button
                     ref={closeButtonRef}
                     onClick={onClose}
-                    aria-label="Close analytics"
+                    aria-label={t('dashboard_close')}
                     className="flex h-11 w-11 shrink-0 items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all border border-white/10 group"
                 >
                     <X className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
@@ -103,50 +110,50 @@ export const SmartDashboard: React.FC<DashboardProps> = ({ onClose }) => {
                 {/* Column 1: Overview Stats */}
                 <div className="space-y-6">
                     <div className="glass-premium !bg-slate-900/80 p-6 rounded-3xl border border-white/5 bg-gradient-to-br from-cyan-500/10 to-transparent">
-                        <div className="text-xs font-black text-cyan-500 uppercase tracking-widest mb-2">Total Capacity</div>
-                        <div className="text-5xl font-black text-white">{totalBikes + totalSlots}</div>
-                        <div className="text-sm text-slate-500 mt-2 font-bold">Total docking points in network</div>
+                        <div className="text-xs font-black text-cyan-500 uppercase tracking-widest mb-2">{t('dashboard_capacity')}</div>
+                        <div className="text-5xl font-black text-white">{totalCapacity}</div>
+                        <div className="text-sm text-slate-400 mt-2 font-bold">{t('dashboard_capacity_hint')}</div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
                         <div className="p-5 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-green-500/20 rounded-xl text-green-500">
-                                    <PieIcon className="w-5 h-5" />
+                                    <Bike className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <div className="text-xs font-bold text-slate-500 uppercase tracking-tight">Active Bikes</div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-tight">{t('dashboard_bikes')}</div>
                                     <div className="text-xl font-black text-white">{totalBikes}</div>
                                 </div>
                             </div>
-                            <div className="text-green-500 font-black text-sm">{totalBikes + totalSlots > 0 ? `+${Math.round((totalBikes / (totalBikes + totalSlots)) * 100)}%` : '-'}</div>
+                            <div className="text-right text-green-500 font-black text-xs">{bikesPercent === null ? '–' : t('dashboard_share', { percent: bikesPercent })}</div>
                         </div>
 
                         <div className="p-5 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-blue-500/20 rounded-xl text-blue-500">
-                                    <TrendingUp className="w-5 h-5" />
+                                    <ParkingSquare className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <div className="text-xs font-bold text-slate-500 uppercase tracking-tight">Empty Slots</div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-tight">{t('dashboard_docks')}</div>
                                     <div className="text-xl font-black text-white">{totalSlots}</div>
                                 </div>
                             </div>
-                            <div className="text-blue-500 font-black text-sm">{totalBikes + totalSlots > 0 ? `${Math.round((totalSlots / (totalBikes + totalSlots)) * 100)}%` : '-'}</div>
+                            <div className="text-right text-blue-400 font-black text-xs">{slotsPercent === null ? '–' : t('dashboard_share', { percent: slotsPercent })}</div>
                         </div>
                     </div>
 
                     {weather && (
                         <div className="p-6 glass-premium !bg-slate-900/80 rounded-3xl border border-white/5 relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/10 blur-3xl rounded-full" />
-                            <div className="text-xs font-black text-yellow-500 uppercase tracking-widest mb-4">Current Conditions</div>
+                            <div className="text-xs font-black text-yellow-500 uppercase tracking-widest mb-4">{t('dashboard_conditions')}</div>
                             <div className="flex items-end gap-2">
                                 <span className="text-4xl font-black text-white">{weather.temperature}°C</span>
                                 <span className="text-slate-400 font-bold mb-1">{weather.description}</span>
                             </div>
                             {airQuality && (
                                 <div className="mt-4 pt-4 border-t border-white/5">
-                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Air Quality Index</div>
+                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('dashboard_air_quality')}</div>
                                     <div className="text-lg font-black text-cyan-400">{airQuality.label} ({airQuality.aqi})</div>
                                 </div>
                             )}
@@ -160,7 +167,7 @@ export const SmartDashboard: React.FC<DashboardProps> = ({ onClose }) => {
                         {/* Pie Chart: Distribution */}
                         <div className="p-4 md:p-6 bg-white/5 border border-white/10 rounded-3xl h-[260px] md:h-[300px] flex flex-col">
                             <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                                <PieIcon className="w-4 h-4" /> Usage Distribution
+                                <PieIcon className="w-4 h-4" /> {t('dashboard_distribution')}
                             </h3>
                             <div className="flex-1">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -187,7 +194,7 @@ export const SmartDashboard: React.FC<DashboardProps> = ({ onClose }) => {
                         {/* Bar Chart: Top Stations */}
                         <div className="p-4 md:p-6 bg-white/5 border border-white/10 rounded-3xl h-[260px] md:h-[300px] flex flex-col">
                             <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                                <BarChart3 className="w-4 h-4" /> Top Available Stations
+                                <BarChart3 className="w-4 h-4" /> {t('dashboard_top_stations')}
                             </h3>
                             <div className="flex-1">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -199,60 +206,45 @@ export const SmartDashboard: React.FC<DashboardProps> = ({ onClose }) => {
                                             cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                                             contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px' }}
                                         />
-                                        <Bar dataKey="bikes" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="bikes" name={t('dashboard_bikes')} fill="#06b6d4" radius={[4, 4, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
                     </div>
 
-                    {/* Area Chart: Trend */}
-                    <div className="p-4 md:p-8 bg-white/5 border border-white/10 rounded-[2rem] md:rounded-[2.5rem] h-[300px] md:h-[350px] flex flex-col">
-                        <div className="flex items-center justify-between mb-8">
+                    {/* Station status from live data */}
+                    <div className="p-4 md:p-8 bg-white/5 border border-white/10 rounded-[2rem] md:rounded-[2.5rem]">
+                        <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
                             <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                <TrendingUp className="w-4 h-4" /> Demo Trend
+                                <MapPin className="w-4 h-4" /> {t('dashboard_station_status')}
                             </h3>
-<div className="flex gap-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-cyan-500" />
-                                        <span className="text-[10px] font-black text-slate-500 uppercase">Demo Trend</span>
-                                    </div>
-                            </div>
+                            <span className="text-xs font-bold text-slate-400">{t('dashboard_status_total', { count: stations.length })}</span>
                         </div>
-                        <div className="flex-1">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={trendData}>
-                                    <defs>
-                                        <linearGradient id="colorBikes" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                    <XAxis dataKey="time" stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />
-                                    <YAxis stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px' }}
-                                    />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="bikes"
-                                        stroke="#06b6d4"
-                                        strokeWidth={4}
-                                        fillOpacity={1}
-                                        fill="url(#colorBikes)"
-                                    />
-                                </AreaChart>
-                            </ResponsiveContainer>
+                        <div className="space-y-4">
+                            {stationStatus.map((item) => (
+                                <div key={item.key}>
+                                    <div className="mb-2 flex items-center justify-between text-sm font-bold">
+                                        <span className="text-slate-300">{item.label}</span>
+                                        <span className="text-white">{item.count}</span>
+                                    </div>
+                                    <div className="h-2 overflow-hidden rounded-full bg-white/5">
+                                        <div
+                                            className={`h-full rounded-full ${item.color}`}
+                                            style={{ width: `${stations.length ? (item.count / stations.length) * 100 : 0}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Footer */}
-            <div className="hidden md:block p-6 bg-white/5 border-t border-white/5 text-center">
-                <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">
-                    Powered by Open Data Networks
+            <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:p-6 bg-white/5 border-t border-white/5 text-center">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
+                    {t('dashboard_source')}
                 </p>
             </div>
         </motion.div>
