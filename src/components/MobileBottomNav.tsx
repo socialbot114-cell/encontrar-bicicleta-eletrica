@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Compass, Star, ShieldCheck } from 'lucide-react';
-import { ThemeToggle } from './ThemeToggle';
+import { Compass, Moon, Star, ShieldCheck, Sun } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { useCityBikes } from '../context/CityBikesContext';
 
@@ -8,6 +8,8 @@ export const MobileBottomNav = () => {
     const { t } = useTranslation();
     const location = useLocation();
     const { clearSelection } = useCityBikes();
+    const { theme, toggleTheme } = useTheme();
+    const ThemeIcon = theme === 'dark' ? Sun : Moon;
     const isFavorites = location.pathname === '/app' && location.hash === '#favorites';
     const isMap = location.pathname === '/app' && !isFavorites;
 
@@ -17,10 +19,10 @@ export const MobileBottomNav = () => {
                 <Compass aria-hidden="true" className="h-5 w-5" />
                 <span>{t('nav_map', 'Map')}</span>
             </Link>
-            <div className="mobile-nav-item">
-                <ThemeToggle />
+            <button type="button" onClick={toggleTheme} aria-label={t('toggle_theme')} className="mobile-nav-item">
+                <ThemeIcon aria-hidden="true" className="h-5 w-5" />
                 <span>{t('nav_theme', 'Theme')}</span>
-            </div>
+            </button>
             <Link to="/app#favorites" onClick={clearSelection} aria-current={isFavorites ? 'page' : undefined} className={`mobile-nav-item ${isFavorites ? 'mobile-nav-item-active' : ''}`}>
                 <Star aria-hidden="true" className="h-5 w-5" />
                 <span>{t('nav_favorites', 'Favorites')}</span>

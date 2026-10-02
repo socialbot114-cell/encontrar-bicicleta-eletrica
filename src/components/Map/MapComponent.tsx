@@ -192,7 +192,8 @@ const MapComponent = () => {
         let timer = 0;
         const openStation = () => {
             const marker = stationMarkerRefs.current.get(station.id);
-            if (marker) {
+            // Clustered markers may hold a ref before chunked loading adds them to the map.
+            if (marker && mapRef.hasLayer(marker)) {
                 mapRef.closePopup();
                 marker.openPopup();
                 clearFavoriteStationTarget();
@@ -221,24 +222,30 @@ const MapComponent = () => {
         let timer = 0;
         const openCaptureStation = () => {
             const marker = stationMarkerRefs.current.get(captureStation.id);
-            if (marker) {
+            if (marker && mapRef?.hasLayer(marker)) {
                 marker.openPopup();
-                return;
+                if (marker.isPopupOpen()) return;
             }
-            if (attempts < 30) {
+            if (attempts < 60) {
                 attempts += 1;
                 timer = window.setTimeout(openCaptureStation, 350);
             }
         };
         timer = window.setTimeout(openCaptureStation, 800);
         return () => window.clearTimeout(timer);
-    }, [captureMode, captureStation, userLocation]);
+    }, [captureMode, captureStation, mapRef, userLocation]);
 
     useEffect(() => {
         if (mapRef && activeRoute) {
+            // On mobile the context sheet covers the lower map, so fit the route into the area above it.
+            const mapRect = mapRef.getContainer().getBoundingClientRect();
+            const overlay = document.querySelector<HTMLElement>('.map-context-overlay');
+            const isBottomSheet = !window.matchMedia('(min-width: 768px)').matches;
+            const overlayTop = overlay?.getBoundingClientRect().top ?? mapRect.bottom;
+            const bottomPadding = isBottomSheet ? Math.max(140, mapRect.bottom - overlayTop + 32) : 140;
             mapRef.fitBounds(activeRoute.route.coordinates, {
-                paddingTopLeft: [36, 112],
-                paddingBottomRight: [36, 140],
+                paddingTopLeft: [36, isBottomSheet ? 176 : 112],
+                paddingBottomRight: [36, bottomPadding],
                 maxZoom: 16,
                 animate: true,
             });
@@ -431,7 +438,7 @@ const MapComponent = () => {
                                         type="button"
                                         aria-pressed={onlyEbikes}
                                         onClick={() => setOnlyEbikes((value) => !value)}
-                                        className={`mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${onlyEbikes ? 'bg-emerald-600 text-white' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'}`}
+                                        className={`mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition ${onlyEbikes ? 'bg-emerald-600 text-white' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'}`}
                                     >
                                         <BatteryCharging className="h-4 w-4" />
                                         {onlyEbikes ? t('ebike_filter_active') : t('ebike_filter_show')}
